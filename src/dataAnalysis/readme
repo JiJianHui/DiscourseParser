@@ -1,0 +1,15 @@
+This file is used to explain what this package is doing.
+
+1：主要目的
+这个java包主要用来对语料进行数据分析工作。为后期实验提供数据。
+主要是为师兄以及自己后期做实验时，在原始语料的层级上提供一层数据分析工作。
+
+2：DataAnalysis.java
+主要是数据分析的主类，针对各种不同的数据分析任务，由该类进行调度。
+
+2: SenseKappa.java
+用来计算标注的句间关系的一致性。即不同的标注人员在标注同一段语料的时候，大家标注结果的一致性。
+依赖性：不依赖其它文件
+
+3: ConvertOldWordDict.java
+将原有Python程序统计出来的连词和关系的对应表转换为新关系体系下的资源文件。
