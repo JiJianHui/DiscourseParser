@@ -20,8 +20,13 @@ import org.dom4j.*;
  */
 public class Resource
 {
-    public static HashSet<String> ExpConnectivesDict;  //只是存放了关联词词表
-    public static HashSet<String> ImpConnectivesDict;
+    //public static HashSet<String> ExpConnectivesDict;  //只是存放了关联词词表
+    //public static HashSet<String> ImpConnectivesDict;
+
+    public static HashMap<String, Integer> ExpConnWordDict;
+    public static HashMap<String, Integer> ImpConnWordDict;
+
+    public static HashMap<String, Integer> NotAsDiscourseWordDict;
 
     public static HashMap<String, Integer> ExpParallelWordDict;  //保存了平行连词
 
@@ -39,8 +44,10 @@ public class Resource
 
     static
     {
-        ExpConnectivesDict       = new HashSet<String>();
-        ImpConnectivesDict       = new HashSet<String>();
+        ExpConnWordDict          = new HashMap<String, Integer>();
+        ImpConnWordDict          = new HashMap<String, Integer>();
+        NotAsDiscourseWordDict   = new HashMap<String, Integer>();
+
         ExpParallelWordDict      = new HashMap<String, Integer>();
 
         allWordsDict             = new LinkedHashMap<String, DSAWordDictItem>();
@@ -73,7 +80,7 @@ public class Resource
     public static void LoadExpConnectivesDict()
     {
         //防止重复加载
-        if( ExpConnectivesDict.size() > 2 ) return;
+        if( ExpConnWordDict.size() > 2 ) return;
 
         String path = Constants.ExpConWord_Dict_Path;
 
@@ -86,8 +93,18 @@ public class Resource
 
             for( String line : lines )
             {
-                line = line.trim();
-                if(line.length() > 0) ExpConnectivesDict.add( line );
+                String[] lists = line.split("\t");
+                if(lists.length > 2)
+                {
+                    int connNum    = Integer.valueOf(lists[1]);
+                    int notConnNum = Integer.valueOf(lists[2]);
+
+                    //filter the word as needed
+                    if(connNum == 0) continue;
+
+                    ExpConnWordDict.put(lists[0], connNum);
+                    NotAsDiscourseWordDict.put(lists[0], notConnNum);
+                }
             }
         }
         catch (Exception e)
@@ -204,7 +221,8 @@ public class Resource
                     String annot   = sentNode.element("Annotation").getText();
 
                     //去除长度过长的语句。
-                    if( source.length() > Constants.Max_Sentence_Length ) continue;
+                    if( fPath.endsWith(Constants.P3_Ending)&& source.length() > Constants.Max_Sentence_Length )
+                        continue;
 
                     //去除source里面的人工标签 {implicit = 而且}
                     int begIndex = source.indexOf("{implicit =");

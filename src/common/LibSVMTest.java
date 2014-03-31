@@ -70,7 +70,8 @@ public class LibSVMTest
     /**使用训练数据来训练svm模型，返回的是模型的地址**/
     public String trainModel() throws IOException
     {
-        String[] trainArgs = {"-c", "8192", "-g", "8.0", "./data/svm/libsvmTrainData_scale.txt"};
+        String[] trainArgs = {"-c", "2048", "-g", "0.0078125","-w1","5","-w0","1", "./data/svm/libsvmTrainData_scale.txt"};
+        //String[] trainArgs = {"E:\\Program\\libsvm-3.17\\data\\svmguide1"};
         String modelFile   = svm_train.main(trainArgs);
         return modelFile;
     }
@@ -87,6 +88,7 @@ public class LibSVMTest
     public double testModel(String modelFile) throws IOException
     {
         String[] testArgs = {"./data/svm/libsvmTestData_scale.txt", modelFile, "./data/svm/libsvmResult.txt"};
+        //String[] testArgs = {"E:\\Program\\libsvm-3.17\\data\\svmguide1.t", modelFile, "./data/svm/libsvmResult.txt"};
         Double   accuracy = svm_predict.main(testArgs);
 
         return  accuracy;
@@ -128,79 +130,60 @@ public class LibSVMTest
         return label;
     }
 
+    public void countPRF() throws IOException {
+        String testFile = Constants.Libsvm_Test_Scale_Data_Path;
+        String result   = Constants.Libsvm_Result_Path;
+
+        ArrayList<String> testLines   = new ArrayList<String>();
+        ArrayList<String> resultLines = new ArrayList<String>();
+
+        util.readFileToLines(testFile, testLines);
+        util.readFileToLines(result, resultLines);
+
+        double tp = 0, fp = 0, fn = 0, tn = 0;
+
+        for(int index = 0; index < testLines.size(); index++)
+        {
+            String testLine = testLines.get(index);
+            String[] lists  = testLine.split(" ");
+
+            int testLabel   = Double.valueOf(lists[0]).intValue();
+            int resultLabel = Double.valueOf(resultLines.get(index).trim()).intValue();
+
+            if( testLabel == resultLabel )
+            {
+                if(testLabel == Constants.Labl_is_ConnWord ) tp++;
+                else tn++;
+            }
+            else
+            {
+                if(testLabel == Constants.Labl_is_ConnWord) fp++;
+                else fn++;
+            }
+        }
+
+        double p = tp / (tp + fp);
+        double r = tp / (tp + fn);
+        double f = 2 * p * r / (p + r);
+
+        System.out.println("P: " + p + "\t R: " + r + "\t F: " + f);
+    }
+
     private static int atoi(String s){ return Integer.parseInt(s); }
     private static double atof(String s) { return Double.valueOf(s).doubleValue(); }
 
 	public static void main(String[] args) throws IOException
     {
-
-        /**
-        String[] trainArgs = {"-c", "8192", "-g", "8.0", "./data/svm/libsvmTrainData_scale.txt"};
-        String modelFile = svm_train.main(trainArgs);
-        System.out.println( "Model File: " + modelFile );
-        **/
-
-        //Test for cross validation
-        //String[] crossValidationTrainArgs = {"-v", "5", "./data/svm/libsvmTrainData_scale.txt"};// 10 fold cross validation
-        //modelFile = svm_train.main(crossValidationTrainArgs);
-        //System.out.print("Cross validation is done! The modelFile is " + modelFile);
-
-        ////directory of test file, model file, result file
-        /**
-		String[] testArgs = {"./data/svm/libsvmTestData_scale.txt", modelFile, "./data/svm/libsvmResult.txt"};
-		Double accuracy = svm_predict.main(testArgs);
-         **/
-
-//        svm_model model = svm.svm_load_model("./libsvmTrainData_scale.txt.model");
-//
-//        String line = "1.0 1:0.3333333333333333 2:0.0718232044198895 3:0.4744897959183674 4:0.835820895522388 61:1.0 101:1.0 197:1.0";
-//
-//        String[] lists = line.split(" ");
-//        svm_node[] nodes = new svm_node[lists.length - 1];
-//
-//        for(int index = 1; index < nodes.length; index++)
-//        {
-//            String[] temp = lists[index].split(":");
-//
-//            nodes[index-1] = new svm_node();
-//            nodes[index-1].index = Integer.valueOf( temp[0] );
-//            nodes[index-1].value = Double.valueOf( temp[1] );
-//        }
-//
-//        System.out.println( svm.svm_predict(model, nodes) );
-//
-////		System.out.println("SVM Classification is done! The accuracy is " + accuracy);
-
-            /**
-            //载入模型文件
-            svm_model model = svm.svm_load_model("./libsvmTrainData_scale.txt.model");
-
-            String line = "1.0 1:0.3333333333333333 2:0.07231920199501247 3:0.9915254237288136 4:0.2515991471215352 57:1.0 101:1.0 197:1.0 ";
-
-            StringTokenizer st = new StringTokenizer(line," /t/n/r/f:");
-
-            double target = atof(st.nextToken());
-            int m = st.countTokens()/2;
-            svm_node[] x = new svm_node[m];
-
-            for(int j=0;j<m;j++)
-            {
-                x[j] = new svm_node();
-                x[j].index = atoi(st.nextToken());
-                x[j].value = atof(st.nextToken());
-            }
-
-            double predict_value[] = new double[m];
-
-            //输出使用载入的模型预测的标签
-            System.out.println(svm.svm_predict(model,x));
-             **/
-
         LibSVMTest test = new LibSVMTest();
 
-        //test.scaleTrainData();
-        //test.scaleTestData();
-        test.trainModel();
+        test.scaleTrainData();
+        test.scaleTestData();
+
+        String modelFile = test.trainModel();
+        test.testModel(modelFile);
+
+        //计算召回率和准确率
+        test.countPRF();
 
 	}
 }

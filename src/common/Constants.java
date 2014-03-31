@@ -50,11 +50,11 @@ public class Constants
     public static String P1_Ending = ".p1";
 
     //显式连词的词典位置，只保存了常见的连词词典，并没有保存其它信息
-    public static String ExpConWord_Dict_Path = "./resource/singWord.txt";
-    public static String ExpParallelWord_Dict_Path = "./resource/unParallelWord.txt";
+    public static String ExpConWord_Dict_Path      = "resource/singWord.txt";
+    public static String ExpParallelWord_Dict_Path = "resource/unParallelWord.txt";
 
     //保存了连词和sense的对应词典，词典中保存了每个连词的详细信息：对应的关系列表。
-    public static String Connective_Relation_Path = "./resource/p3Word(Filtered).txt";
+    public static String Connective_Relation_Path = "resource/p3Word(Filtered).txt";
 
     //最原始的标注语料集合，主要用于基础的数据分析
     public static String Raw_Annotation_Data = "F:\\Corpus Data\\check";
@@ -68,8 +68,8 @@ public class Constants
     public static String Stop_Word_Path_cn = "F:\\Corpus Data\\ChinseseStopWord\\Stopwords_cn_1208.txt";
 
     //ltp分析结果是独立保存的，sentID保存了每个句子对应的编号。这样就可以找到对应的处理结果
-    public static String Ltp_XML_Result_P3        = "E:\\Program\\Java\\DiscourseParser\\data\\p3";
-    public static String Ltp_XML_Result_P3_SentID = "E:\\Program\\Java\\DiscourseParser\\data\\p3\\sentID.txt";
+    public static String Ltp_XML_Result_P3        = "data/p3";
+    public static String Ltp_XML_Result_P3_SentID = "data/p3/sentID.txt";
 
 
     //------------------------机器学习相关-------------------------------------
@@ -79,7 +79,15 @@ public class Constants
     public static Integer ConnRecoganize_ML   = 1;
     public static Integer ConnRecoganize_Rule = 0;
 
-    public static String  Libsvm_Train_Data_Path = "E:\\Program\\Java\\DiscourseParser\\data\\libsvmTrainData.txt";
+    public static String  Libsvm_Origin_Data_Path = "data/svm/libsvmOriginData.txt";
+
+    public static String  Libsvm_Train_Data_Path  = "data/svm/libsvmTrainData.txt";
+    public static String  Libsvm_Test_Data_Path  = "data/svm/libsvmTestData.txt";
+
+    public static String  Libsvm_Train_Scale_Data_Path  = "data/svm/libsvmTrainData_scale.txt";
+    public static String  Libsvm_Test_Scale_Data_Path  = "data/svm/libsvmTestData_scale.txt";
+
+    public static String Libsvm_Result_Path = "data/svm/libsvmResult.txt";
 
     //抽取样本时需要过滤掉的词性:人名+地名+机构名 + 位置名 + 代词 + 外文次 + 标点共七种
     //public static String[] Ignore_PosTags = {"nh", "ni", "nl", "ns", "r", "ws", "wp"};

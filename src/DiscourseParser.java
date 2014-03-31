@@ -94,7 +94,7 @@ public class DiscourseParser
             MLVectorItem item = new MLVectorItem(wContent);
 
             //2: 过滤掉噪音词
-            if( !Resource.ExpConnectivesDict.contains(wContent) ) continue;
+            if( !Resource.ExpConnWordDict.containsKey(wContent) ) continue;
 
             //3：获取词性特征
             String wNextPos = "w";
@@ -348,7 +348,7 @@ public class DiscourseParser
         //discourseParser.parseRawFile("E:\\Program\\Java\\DiscourseParser\\data\\TestSentenceSplit.txt");
         //discourseParser.connectiveRecognize();
 
-        String test = "我 听到 过 很多 解释, 但是 我 觉得 我 从没有 看到 过 清晰 的 分析 。";
+        String test = "虽然 我 听到 过 很多 解释, 但是 我 觉得 我 从没有 看到 过 清晰 的 分析 。";
         //DSASentence dsaSentence = new DSASentence(test);
         //discourseParser.analysisSentenceConnective(dsaSentence);
         discourseParser.run(test);

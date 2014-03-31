@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * 使用机器学习方法来训练一个连词识别模型,,目前针对的是p3句间关系
+ * 使用机器学习方法来训练一个连词识别模型,,目前针对的是p3句间关系.主要是用来生成训练数据TrainData
  * User: Ji JianHui
  * Time: 2014-03-05 19:45
  * Email: jhji@ir.hit.edu.cn
@@ -29,9 +29,14 @@ public class MLRecognize
 
     private ArrayList<ArrayList<String>> notLabeledWords = new ArrayList<ArrayList<String>>();
 
-    public MLRecognize()
+    public MLRecognize() throws DocumentException, IOException
     {
-
+        //加载资源
+        Resource.LoadRawRecord();
+        Resource.LoadStopWords();
+        Resource.LoadExpConnectivesDict();
+        Resource.LoadWordRelDict();
+        //Resource.LoadLtpXMLResultSentID();
     }
 
     /**
@@ -44,7 +49,7 @@ public class MLRecognize
         this.filterItems = new ArrayList<MLVectorItem>();
 
 
-        String path = Constants.Libsvm_Train_Data_Path;
+        String path = Constants.Libsvm_Origin_Data_Path;
 
         //1：获取特征向量组
         //this.getLabeledTrainData( this.items );
@@ -68,16 +73,9 @@ public class MLRecognize
      * @throws DocumentException
      * @throws IOException
      */
-    public void getLabeledTrainDataWithAnsj(ArrayList<MLVectorItem> datas) throws DocumentException, IOException
+    public void getLabeledTrainDataWithAnsj(ArrayList<MLVectorItem> datas)
     {
         System.out.println("[--Info--]: Get Labeled Train Instances From Sense Record..." );
-
-        //加载资源
-        Resource.LoadRawRecord();
-        Resource.LoadStopWords();
-        Resource.LoadExpConnectivesDict();
-        Resource.LoadWordRelDict();
-        Resource.LoadLtpXMLResultSentID();
 
         //ansj分词结果
         for(SenseRecord record:Resource.Raw_Train_Annotation_p3)
@@ -100,13 +98,18 @@ public class MLRecognize
                 MLVectorItem item = new MLVectorItem(wContent);
 
                 //2: 过滤掉噪音词
-                if( !Resource.ExpConnectivesDict.contains(wContent) ) continue;
+                if( !Resource.ExpConnWordDict.containsKey(wContent) ) continue;
+
+                //根据连词出现的次数进行过滤
+                int connNum    = Resource.ExpConnWordDict.get(wContent);
+                int notConnNum = Resource.NotAsDiscourseWordDict.get(wContent);
+
+                if( connNum < 5 && notConnNum > 5*connNum ) continue;
+                if( connNum < 5 ) continue;
 
                 //3：设置词性特征
-                String wNextPos = "w";
-                String wPrevPos = "w";
-                Term wNextTerm  = wordItem.getTo();
-                Term wPrevTerm  = wordItem.getFrom();
+                String wNextPos = "w", wPrevPos = "w";
+                Term wNextTerm  = wordItem.getTo(), wPrevTerm  = wordItem.getFrom();
 
                 if( wPrevTerm != null ) wPrevPos = wPrevTerm.getNatrue().natureStr;
                 if( wNextTerm != null ) wNextPos = wNextTerm.getNatrue().natureStr;
@@ -161,13 +164,6 @@ public class MLRecognize
     public void getLabeledTrainData(ArrayList<MLVectorItem> datas) throws DocumentException, IOException
     {
         System.out.println("[--Info--]: Get Labeled Train Instances From Sense Record..." );
-
-        //加载资源
-        Resource.LoadRawRecord();
-        Resource.LoadStopWords();
-        Resource.LoadExpConnectivesDict();
-        Resource.LoadWordRelDict();
-        Resource.LoadLtpXMLResultSentID();
 
         //LTP分词结果处理
         //针对每条记录，加载ltp分析结果,根据ltp来抽取词性以及
@@ -338,15 +334,29 @@ public class MLRecognize
             //String line = item.toLineForLibSvm();
             String line = item.toLineForLibSvmWithAnsj();
             lines.add( line );
-
             int label = item.getLabel();
+
             if( label == Constants.Labl_is_ConnWord )
+            {
                 this.expInstances++;
+            }
             else
+            {
                 this.impInstances++;
+            }
         }
 
         util.writeLinesToFile(fPath, lines);
+
+        //将数据拆分为训练数据和测试数据
+        int originNum = lines.size();
+        int trainNum  = originNum /5 * 4;
+
+        ArrayList<String> trainLines = new ArrayList<String>( lines.subList(0, trainNum) );
+        ArrayList<String> testLines  = new ArrayList<String>( lines.subList(trainNum, originNum) );
+
+        util.writeLinesToFile(Constants.Libsvm_Train_Data_Path, trainLines);
+        util.writeLinesToFile(Constants.Libsvm_Test_Data_Path, testLines);
     }
 
 

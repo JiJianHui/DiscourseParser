@@ -120,7 +120,7 @@ public class ConnectiveRecognize
 
         for( DSAConnective conWord: curConnectives )
         {
-            if( Resource.ExpConnectivesDict.contains(conWord.getContent()) )
+            if( Resource.ExpConnWordDict.containsKey(conWord.getContent()) )
             {
                 dsaSentence.getConWords().add( conWord );
             }
@@ -194,7 +194,7 @@ public class ConnectiveRecognize
     {
         boolean result = false;
 
-        if( Resource.ExpConnectivesDict.contains(word))
+        if( Resource.ExpConnWordDict.containsKey(word))
         {
             if( posTag.equals("c") )
             {
