@@ -33,12 +33,14 @@ public class Resource
     public static LinkedHashMap<String, DSAWordDictItem> allWordsDict;     //存放了与一个关联词对应的关联词类型的整个信息
     public static LinkedHashMap<String, String> connectiveRelationDict;    //存放了连词和关系标号的对应关系
 
+    public static LinkedHashSet<SenseRecord> Raw_Train_Annotation;
     public static LinkedHashSet<SenseRecord> Raw_Train_Annotation_p1;   //新体系下的标注结果的封装
     public static LinkedHashSet<SenseRecord> Raw_Train_Annotation_p2;
     public static LinkedHashSet<SenseRecord> Raw_Train_Annotation_p3;
 
     public static HashSet<String> Stop_Words = new HashSet<String>();   //停用词词表
 
+    public static HashMap<String, Integer[]> ConnectiveArgNum;
 
     public static HashMap<String, Integer> Ltp_Xml_Result_SentID_P3;  //ltp分析结果的句子和ID的对应关系
 
@@ -53,9 +55,12 @@ public class Resource
         allWordsDict             = new LinkedHashMap<String, DSAWordDictItem>();
         connectiveRelationDict   = new LinkedHashMap<String, String>();
 
+        Raw_Train_Annotation     = new LinkedHashSet<SenseRecord>();
         Raw_Train_Annotation_p1  = new LinkedHashSet<SenseRecord>();
         Raw_Train_Annotation_p2  = new LinkedHashSet<SenseRecord>();
         Raw_Train_Annotation_p3  = new LinkedHashSet<SenseRecord>();
+
+        ConnectiveArgNum         = new HashMap<String, Integer[]>();
 
         Ltp_Xml_Result_SentID_P3 = new HashMap<String, Integer>();
     }
@@ -63,7 +68,7 @@ public class Resource
 
     public static void LoadResource() throws DocumentException
     {
-        System.out.println("[--Info--]: Loading Resource....");
+        System.out.println("[--Info--] Loading Resource....");
 
         LoadExpConnectivesDict();
 
@@ -87,7 +92,7 @@ public class Resource
         try
         {
             //加载单个连词
-            System.out.println("[--Info--]: Loading Single Explicit Connective From: " + path);
+            System.out.println("[--Info--] Loading Single Explicit Connective From: " + path);
             ArrayList<String> lines = new ArrayList<String>();
             util.readFileToLines(path, lines);
 
@@ -123,7 +128,7 @@ public class Resource
         {
             //加载并列连词
             String path = Constants.ExpParallelWord_Dict_Path;
-            System.out.println("[--Info--]: Loading Parallel Explicit Connective From: " + path);
+            System.out.println("[--Info--] Loading Parallel Explicit Connective From: " + path);
 
             ArrayList<String> paraLines = new ArrayList<String>();
             util.readFileToLines(path, paraLines);
@@ -151,7 +156,7 @@ public class Resource
      */
     public static void LoadWordRelDict()
     {
-        System.out.println("[--Info--]: Loading Word and Sense Dict From: " + Constants.Connective_Relation_Path);
+        System.out.println("[--Info--] Loading Word and Sense Dict From: " + Constants.Connective_Relation_Path);
 
         if( allWordsDict.size() > 2 ) return;
 
@@ -184,7 +189,7 @@ public class Resource
      */
     public static void LoadRawRecord() throws DocumentException
     {
-        System.out.println("[--Info--]: Loading Raw Record From: " + Constants.Train_Data_Dir);
+        System.out.println("[--Info--] Loading Raw Record From: " + Constants.Train_Data_Dir);
 
         if( Raw_Train_Annotation_p1.size() > 2 ) return;
 
@@ -215,13 +220,17 @@ public class Resource
 
                     String source  = sentNode.element("Source").getText();
                     String conWord = sentNode.element("Connectives").element("Content").getText();
+                    String wSpan   = sentNode.element("Connectives").element("Span").getText().replace("...", ";");
 
                     String arg1    = sentNode.element("Arg1").element("Content").getText();
                     String arg2    = sentNode.element("Arg2").element("Content").getText();
                     String annot   = sentNode.element("Annotation").getText();
 
+                    if( conWord.equalsIgnoreCase("null") ) continue;
+                    if( wSpan.equalsIgnoreCase("null") ) continue;
+
                     //去除长度过长的语句。
-                    if( fPath.endsWith(Constants.P3_Ending)&& source.length() > Constants.Max_Sentence_Length )
+                    if( fPath.endsWith(Constants.P3_Ending) && source.length() > Constants.Max_Sentence_Length )
                         continue;
 
                     //去除source里面的人工标签 {implicit = 而且}
@@ -237,11 +246,19 @@ public class Resource
 
                     SenseRecord record = new SenseRecord(type, relNO);
 
-                    record.setText( util.removeAllBlank(source));
+                    record.setText( util.removeAllBlank(source) );
                     record.setConnective(conWord);
                     record.setArg1(arg1);
                     record.setArg2(arg2);
                     record.setAnnotation(annot);
+                    record.setfPath(fPath);
+
+                    int lineBeg = util.getLineBeg(annot);
+                    int connBeg = Integer.valueOf( wSpan.split(";")[0] );
+
+                    if( connBeg < lineBeg ) record.setText( conWord + record.getText() );
+
+                    record.setConnBeginIndex( connBeg - lineBeg > 0? connBeg - lineBeg : 0 );
 
                     results.add(record);
                 }
@@ -258,6 +275,7 @@ public class Resource
             else{
                 Raw_Train_Annotation_p3.addAll(results);
             }
+            Raw_Train_Annotation.addAll(results);
         }
     }
 
@@ -268,7 +286,7 @@ public class Resource
      */
     public static void LoadStopWords() throws IOException
     {
-        System.out.println("[--Info--]: Loading Stop Words From: " + Constants.Stop_Word_Path_cn);
+        System.out.println("[--Info--] Loading Stop Words From: " + Constants.Stop_Word_Path_cn);
         String path = Constants.Stop_Word_Path_cn;
 
         ArrayList<String> words = new ArrayList<String>();
@@ -286,7 +304,7 @@ public class Resource
      */
     public static void LoadLtpXMLResultSentID() throws IOException
     {
-        System.out.println("[--Info--]: Loading LTP XML Result SentID From: " + Constants.Stop_Word_Path_cn);
+        System.out.println("[--Info--] Loading LTP XML Result SentID From: " + Constants.Stop_Word_Path_cn);
 
         String path = Constants.Ltp_XML_Result_P3_SentID;
         ArrayList<String> lines = new ArrayList<String>();
@@ -309,5 +327,24 @@ public class Resource
             }
         }
 
+    }
+
+
+    /**加载连词和argument位置数据**/
+    public static void LoadConnectiveArgs() throws IOException
+    {
+        String fPath = "data/connArgArg.txt";
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLines(fPath,lines);
+
+        for(String line:lines)
+        {
+            String[] lists = line.split("\t");
+            String connWord = lists[0];
+            int argConnArg = Integer.valueOf(lists[1]);
+            int connArgArg = Integer.valueOf(lists[2]);
+
+            ConnectiveArgNum.put(connWord, new Integer[]{argConnArg, connArgArg});
+        }
     }
 }

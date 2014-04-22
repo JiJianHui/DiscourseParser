@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 public class DSASentence
 {
     private String content;
+    private String segContent;
 
     private ArrayList<DSARelation> relations;
     private ArrayList<DSAConnective> conWords;
@@ -27,6 +28,8 @@ public class DSASentence
     private List<Term> ansjWordTerms;
     private ArrayList<DSAEDU> edus;
 
+    private DSAEDU rootEDU;
+
     public DSASentence(String content)
     {
         this.content  = content;
@@ -36,6 +39,7 @@ public class DSASentence
         this.parallelConnectives = new ArrayList<ParallelConnective>();
 
         this.edus = new ArrayList<DSAEDU>();
+        this.rootEDU = null;
     }
 
     public String getConnWordContent()
@@ -165,5 +169,21 @@ public class DSASentence
 
     public void setEdus(ArrayList<DSAEDU> edus) {
         this.edus = edus;
+    }
+
+    public DSAEDU getRootEDU() {
+        return rootEDU;
+    }
+
+    public void setRootEDU(DSAEDU rootEDU) {
+        this.rootEDU = rootEDU;
+    }
+
+    public String getSegContent() {
+        return segContent;
+    }
+
+    public void setSegContent(String segContent) {
+        this.segContent = segContent;
     }
 }

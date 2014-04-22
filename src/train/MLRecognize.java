@@ -77,6 +77,10 @@ public class MLRecognize
     {
         System.out.println("[--Info--]: Get Labeled Train Instances From Sense Record..." );
 
+        //处理一个句子中出现多个连词的情况
+        int findIndex = 0; //为了保证速度，需要从前一次匹配的位置开始查找
+        ArrayList<SenseRecord> handledRecord = new ArrayList<SenseRecord>();
+
         //ansj分词结果
         for(SenseRecord record:Resource.Raw_Train_Annotation_p3)
         {

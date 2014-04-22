@@ -394,18 +394,27 @@ public class util
      */
     public static boolean isParallelWordInSentence(String parallelWord, String sentence)
     {
-        boolean result = false;
-        String[] words = parallelWord.split(";");
+        boolean  result    = false;
+        String[] words     = parallelWord.split(";");
+        String[] sentWords = sentence.split(" ");
 
-        //^.*hello.*$
-        String regex = "^.*";
-        for(String word: words) regex += word + ".*";
-        regex += "$";
+        int index = 0, end = 0;
 
-        Pattern p = Pattern.compile(regex);
-        Matcher m = p.matcher(sentence);
+        for( end = 0; end < words.length; end++ )
+        {
+            String word = words[end];
 
-        if( m.find() ) result = true;
+            for(; index < sentWords.length; index++)
+            {
+                if( word.equalsIgnoreCase(sentWords[index]) ) break;
+            }
+
+            //如果已经超出了界限
+            if( index > sentWords.length - 1 ) break;
+        }
+
+        //如果能够到达最后一个词，则为真
+        if( end > words.length - 1 ) result = true;
 
         return result;
     }
@@ -448,5 +457,47 @@ public class util
             result = lower + (upper-lower) *(value-minValue)/(maxValue - minValue);
 
         return result;
+    }
+
+
+    /**
+     * 获取一行标注文本的开始位置
+     * @param line
+     * @return
+     */
+    public static int getLineBeg(String line)
+    {
+        String[] lists = line.split(" ");
+
+        int beg1 = Integer.valueOf(lists[0]);
+        int beg2 = Integer.valueOf(lists[2]);
+
+        if(beg1 < beg2)
+            return beg1;
+        else
+            return beg2;
+    }
+
+    /**获取新的关系编号下，该关系的索引位置**/
+    public static int getRelIDIndex(String relID)
+    {
+        int     index = -1;
+        boolean find  = false;
+
+        for(index = 0; index < Constants.relNo.length; index++)
+        {
+            if(Constants.relNo[index].equalsIgnoreCase(relID))
+            {
+                find = true;
+                break;
+            }
+        }
+
+        if( find )
+        {
+            return index;
+        }
+
+        return -1;
     }
 }

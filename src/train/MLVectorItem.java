@@ -34,7 +34,7 @@ public class MLVectorItem
     private double positionInLine;  //在句子中的位置信息
 
 
-    private double ambiguity;       //该连词在连词词典中指示关系的歧义度。1- 指示最大的关系的概率
+    private double ambiguity;       //该连词在连词词典中指示关系的歧义度。指示最大的关系的概率
     private double occurInDict;    //在连词词典中出现的次数,如果没有出现，则默认为0
 
     public MLVectorItem(String content)

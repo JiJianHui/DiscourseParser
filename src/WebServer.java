@@ -1,4 +1,7 @@
+import common.Constants;
+import common.util;
 import entity.DSAConnective;
+import entity.DSASentence;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -34,6 +37,8 @@ public class WebServer
 
         while (true)
         {
+            try
+            {
             //监听客户端的请求
             Socket client = serverSocket.accept();
 
@@ -44,22 +49,39 @@ public class WebServer
 
             System.out.println("get a query:" + line);
 
-            String response = "";
-            //ArrayList<DSAConnective> result = dsaParser.run(line);
-            ArrayList<DSAConnective> result = null;
+            DSASentence sentence = dsaParser.run(line, false);
 
-            for(DSAConnective connective:result)
+            String response = "";
+
+            if( sentence.getConWords().size() > 0 )
             {
-                response = response + connective.getStringContent()+"\n";
+                DSAConnective curWord = sentence.getConWords().get(0);
+                String relType = curWord.getExpRelType();
+                relType = relType + Constants.relName[util.getRelIDIndex(relType)];
+
+                response = curWord.getContent() + "#";
+                if( curWord.getArg1EDU()!= null && curWord.getArg2EDU() != null )
+                {
+                    response += curWord.getArg1EDU().getContent() + "#";
+                    response += curWord.getArg2EDU().getContent() + "#";
+                    response += relType + "#";
+                    response += curWord.getExpRelProbality();
+                }
             }
 
-            System.out.println(result);
             PrintStream print = new PrintStream(client.getOutputStream());
 
             print.println(response);
             print.close();
 
+            System.out.println(response);
+
             client.close();
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
         }
     }
 

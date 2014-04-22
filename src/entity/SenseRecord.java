@@ -9,12 +9,14 @@ package entity;
 public class SenseRecord
 {
     private Long  id;
+    private String fPath;
 
     private String type;
     private String relNO;
 
     private String text;
     private String connective;
+    private int connBeginIndex;
 
     private String arg1;
     private String arg2;
@@ -25,6 +27,7 @@ public class SenseRecord
     {
         this.type  = type;
         this.relNO = relNO;
+        this.connBeginIndex = 0;
     }
 
     //------------Getter and Setter
@@ -90,5 +93,21 @@ public class SenseRecord
 
     public void setAnnotation(String annotation) {
         this.annotation = annotation;
+    }
+
+    public String getfPath() {
+        return fPath;
+    }
+
+    public void setfPath(String fPath) {
+        this.fPath = fPath;
+    }
+
+    public int getConnBeginIndex() {
+        return connBeginIndex;
+    }
+
+    public void setConnBeginIndex(int connBeginIndex) {
+        this.connBeginIndex = connBeginIndex;
     }
 }

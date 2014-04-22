@@ -1,6 +1,9 @@
 package entity;
 
 import common.Constants;
+import edu.stanford.nlp.trees.Tree;
+
+import java.util.ArrayList;
 
 /**
  * 为了保存在实际识别时遇到的每一个候选的连词
@@ -16,7 +19,7 @@ public class DSAConnective
     private String prevPosTag;
     private String nextPosTag;
 
-    private double positionInLine;
+    private double positionInLine;  //在实际的没有分词的内容下的位置
 
     private String depencyTag;  //依存分析的标签
 
@@ -33,6 +36,17 @@ public class DSAConnective
     private DSAArgument arg1;
     private DSAArgument arg2;
 
+    private Tree connNode;              //在句法分析树中的连词节点，注意这是去除了泛化之后的节点(沿着单链上升：不过--AD---ADVP)
+    private ArrayList<Tree> arg2Nodes; //主要是因为arg2可能是由多个并列在同一级的Tree Node组成。
+    private ArrayList<Tree> arg1Nodes; //
+
+    private DSAEDU arg2EDU;
+    private DSAEDU arg1EDU;
+
+    private Integer depth;              //同EDU的层次一样，每个连词也有对应的depth.
+
+    private String expRelType;
+    private double expRelProbality;
 
     public DSAConnective(String content)
     {
@@ -46,6 +60,13 @@ public class DSAConnective
             this.isParallelWord = true;
         }
         else this.isParallelWord = false;
+
+        this.connNode  = null;
+        this.arg1Nodes = new ArrayList<Tree>();
+        this.arg2Nodes = new ArrayList<Tree>();
+
+        this.arg1EDU   = null;
+        this.arg2EDU   = null;
     }
 
 
@@ -128,5 +149,70 @@ public class DSAConnective
 
     public void setArg2(DSAArgument arg2) {
         this.arg2 = arg2;
+    }
+
+    public ArrayList<Tree> getArg2Nodes() {
+        return arg2Nodes;
+    }
+
+    public void setArg2Nodes(ArrayList<Tree> arg2Nodes) {
+        this.arg2Nodes = arg2Nodes;
+    }
+
+    public ArrayList<Tree> getArg1Nodes() {
+        return arg1Nodes;
+    }
+
+    public void setArg1Nodes(ArrayList<Tree> arg1Nodes) {
+        this.arg1Nodes = arg1Nodes;
+    }
+
+    public Tree getConnNode() {
+        return connNode;
+    }
+
+    public void setConnNode(Tree connNode)
+    {
+        this.connNode = connNode;
+    }
+
+    public DSAEDU getArg2EDU() {
+        return arg2EDU;
+    }
+
+    public void setArg2EDU(DSAEDU arg2EDU) {
+        this.arg2EDU = arg2EDU;
+    }
+
+    public DSAEDU getArg1EDU() {
+        return arg1EDU;
+    }
+
+    public void setArg1EDU(DSAEDU arg1EDU) {
+        this.arg1EDU = arg1EDU;
+    }
+
+    public Integer getDepth() {
+        return depth;
+    }
+
+    public void setDepth(Integer depth) {
+        this.depth = depth;
+    }
+
+    public String getExpRelType() {
+        return expRelType;
+    }
+
+    public void setExpRelType(String expRelType) {
+        this.expRelType = expRelType;
+    }
+
+    public double getExpRelProbality() {
+        return expRelProbality;
+    }
+
+    public void setExpRelProbality(double expRelProbality) {
+        this.expRelProbality = expRelProbality;
     }
 }
