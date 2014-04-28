@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
  */
 public class DSASentence
 {
+    private Integer id;    //表示了该句子在一篇文章中的索引。
     private String content;
     private String segContent;
 
@@ -123,6 +124,18 @@ public class DSASentence
         return EDUs;
     }
 
+
+    /**
+     * 将一个句子转换为XML形式的结果，用于客户端的分析。
+     * @return
+     */
+    public String toXMLResultForClient()
+    {
+        String result = "";
+
+        return result;
+    }
+
     public String getContent() {
         return content;
     }
@@ -185,5 +198,13 @@ public class DSASentence
 
     public void setSegContent(String segContent) {
         this.segContent = segContent;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
     }
 }

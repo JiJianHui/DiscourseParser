@@ -174,7 +174,7 @@ public class DSAWordDictItem
         result += "\t" + this.expRelations.size() + "\t" + this.impRelations.size();
 
         //º”‘ÿexpRelation
-        ArrayList<Map.Entry<String,Integer>> sortedExpRelations =  util.sortHashMap(this.expRelations);
+        ArrayList<Map.Entry<String,Integer>> sortedExpRelations =  util.sortHashMap(this.expRelations,false);
 
         for( Map.Entry<String, Integer> entry : sortedExpRelations )
         {
@@ -182,7 +182,7 @@ public class DSAWordDictItem
         }
 
         //º”‘ÿimpRelation
-        ArrayList<Map.Entry<String,Integer>> sortedImpRelations =  util.sortHashMap(this.expRelations);
+        ArrayList<Map.Entry<String,Integer>> sortedImpRelations =  util.sortHashMap(this.expRelations,false);
 
         for( Map.Entry<String, Integer> entry : sortedImpRelations )
         {

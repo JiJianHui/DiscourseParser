@@ -339,10 +339,10 @@ public class util
 
     /**
      * 对HashMap进行排序，按照value值进行排序
-     * @param data
+     * asc为true代表按照升序进行排列，asc为false代表按照降序排列
      * @return
      */
-    public static ArrayList<Map.Entry<String,Integer>>  sortHashMap(HashMap<String, Integer> data)
+    public static ArrayList<Map.Entry<String,Integer>>  sortHashMap(HashMap<String, Integer> data, final boolean asc)
     {
         ArrayList<Map.Entry<String,Integer>> results = new ArrayList<Map.Entry<String,Integer>>(data.entrySet());
 
@@ -350,9 +350,35 @@ public class util
             {
                 public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2)
                 {
-                    return ( o2.getValue() - o1.getValue() );
+                    if( asc )
+                        return ( o1.getValue() - o2.getValue() );
+                    else
+                        return ( o2.getValue() - o1.getValue() );
                 }
             }
+        );
+
+        return results;
+    }
+
+    /***
+     * 对输入的Hashmap按照key进行排序
+     * asc为true代表按照升序排列，asc为false代表按照降序排列
+     * **/
+    public static ArrayList<Map.Entry<String,Integer>> sortHashMapByKey(HashMap<String, Integer> data, final boolean asc)
+    {
+        ArrayList<Map.Entry<String,Integer>> results = new ArrayList<Map.Entry<String,Integer>>(data.entrySet());
+
+        Collections.sort( results, new Comparator<Map.Entry<String, Integer>>()
+        {
+            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2)
+            {
+                if( asc )
+                    return ( o1.getKey().compareTo(o2.getKey()) );
+                else
+                    return ( o2.getKey().compareTo(o1.getKey()) );
+            }
+        }
         );
 
         return results;
@@ -499,5 +525,40 @@ public class util
         }
 
         return -1;
+    }
+
+    /***
+     * 获取一个词在同义词词林中的标签。Aa01A03= 人手 人员 人口 人丁 口 食指--我们获取的是前四列
+     * @param word：一个词
+     * @return
+     */
+    public static String getWordTagInSym(String word) throws IOException
+    {
+        String result = null;
+
+        if( word == null ) return result;
+        if( Resource.SymWordDict.size() < 1 ) Resource.LoadSymWordDict();
+
+        for(String line:Resource.SymWordDict)
+        {
+            boolean  find  = false;
+
+            if(line.indexOf(word) == -1 ) continue;
+
+            String[] lists = line.split(" ");
+
+            for(String curWord:lists)
+            {
+                if(curWord.equalsIgnoreCase(word)){
+                    find   = true;
+                    result = line.substring(0,4);
+                    break;
+                }
+            }
+
+            if( find == true ) break;
+        }
+
+        return result;
     }
 }

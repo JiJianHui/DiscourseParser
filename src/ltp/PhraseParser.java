@@ -28,7 +28,7 @@ public class PhraseParser
 
     public PhraseParser()
     {
-        String[] options = { "-maxLength", "500"};
+        String[] options = { "-maxLength", "500","-MAX_ITEMS","500000"};
         String   grammar = "edu/stanford/nlp/models/lexparser/chineseFactored.ser.gz";
         stanfordParser   = LexicalizedParser.loadModel(grammar, options);
 
@@ -61,22 +61,41 @@ public class PhraseParser
 
        // System.out.println( parse.taggedYield() );
 
-        //GrammaticalStructure gs = gsf.newGrammaticalStructure(parse);
-        //List<TypedDependency> tdl = gs.typedDependenciesCCprocessed();
-        //System.out.println(tdl);
-        //System.out.println();
-
         return parse;
 
     }
 
+    /**Stanford的依存分析特征抽取,最终返回的是该短语的依存特征*/
+    public List<TypedDependency> parseLineDependthy(String line)
+    {
+        Tree parse = this.parseLine(line);
+
+        GrammaticalStructure gs = gsf.newGrammaticalStructure(parse);
+        List<TypedDependency> tdl = gs.typedDependenciesCCprocessed();
+
+        System.out.println(tdl);
+        System.out.println();
+
+        return tdl;
+    }
+
+    public List<TypedDependency> parseDependthyUseTree(Tree stanfordTree)
+    {
+        GrammaticalStructure gs = gsf.newGrammaticalStructure(stanfordTree);
+        List<TypedDependency> tdl = gs.typedDependenciesCCprocessed();
+
+        return tdl;
+    }
+
     public static void main(String[] args)
     {
-        String line = "他 打 我 。";
+        String line = "他 出发 了 ， 他 打 我 。";
 
         PhraseParser stanfordParser = new PhraseParser();
-        Tree  result = stanfordParser.parseLine(line);
 
-        result.pennPrint();
+        //Tree  result = stanfordParser.parseLine(line);
+        //result.pennPrint();
+
+        stanfordParser.parseLineDependthy(line);
     }
 }

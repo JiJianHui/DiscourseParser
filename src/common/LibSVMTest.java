@@ -5,8 +5,9 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import libsvm.*;
-import train.MLVectorItem;
+import recognize.word.MLVectorItem;
 
+/***libsvm调用类，主要是用于统一连词识别时候的libsvm调用**/
 public class LibSVMTest
 {
     private  svm_model svmModel;

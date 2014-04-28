@@ -1,4 +1,4 @@
-package train;
+package recognize.word;
 
 import common.Constants;
 import common.util;
@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * 使用机器学习方法来训练一个连词识别模型,,目前针对的是p3句间关系.主要是用来生成训练数据TrainData
+ * 使用机器学习方法来训练一个连词识别模型,,目前针对的是p3句间关系.主要是用来抽取特征生成训练数据TrainData
  * User: Ji JianHui
  * Time: 2014-03-05 19:45
  * Email: jhji@ir.hit.edu.cn
@@ -295,7 +295,7 @@ public class MLRecognize
             results.add(item);
         }
 
-        ArrayList<Map.Entry<String,Integer>> sortWords = util.sortHashMap(asConnWords);
+        ArrayList<Map.Entry<String,Integer>> sortWords = util.sortHashMap(asConnWords, false);
 
         //计算每个连词作为连词出现和不作为连词出现的结果
         ArrayList<String> lines = new ArrayList<String>();
@@ -340,12 +340,10 @@ public class MLRecognize
             lines.add( line );
             int label = item.getLabel();
 
-            if( label == Constants.Labl_is_ConnWord )
-            {
+            if( label == Constants.Labl_is_ConnWord ){
                 this.expInstances++;
             }
-            else
-            {
+            else{
                 this.impInstances++;
             }
         }

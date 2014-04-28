@@ -81,8 +81,8 @@ public class ConvertOldWordDict
                 }
             }
 
-            ArrayList<Map.Entry<String,Integer>> newExpRels = util.sortHashMap(expRelations);
-            ArrayList<Map.Entry<String,Integer>> newImpRels = util.sortHashMap(impRelations);
+            ArrayList<Map.Entry<String,Integer>> newExpRels = util.sortHashMap(expRelations,false);
+            ArrayList<Map.Entry<String,Integer>> newImpRels = util.sortHashMap(impRelations,false);
 
             int expKind = newExpRels.size();
             int impKind = newImpRels.size();

@@ -12,7 +12,7 @@ import org.ansj.splitWord.analysis.NlpAnalysis;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import org.dom4j.DocumentException;
 import resource.Resource;
-import train.MLVectorItem;
+import recognize.word.MLVectorItem;
 
 import java.io.IOException;
 import java.util.*;
@@ -66,10 +66,39 @@ public class DiscourseParser
     }
 
 
-    public DSASentence run(String line, boolean needSegment) throws  IOException
+    /**
+     * 针对一篇文章进行分析。首先需要将一篇文章进行分句，然后对每个句子进行处理。
+     * 输入的是一篇文章的内容，返回的是封装好的DSA对象。
+     */
+    private DSAParagraph parseRawFile(String fileContent, boolean needSegment) throws Exception
+    {
+        DSAParagraph paragraph = new DSAParagraph(fileContent);
+
+        //0: 将文章读取并得到文章中的句子集合
+        ArrayList<String> sentences = util.filtStringToSentence(fileContent);
+
+        //1：首先是句内关系的判断
+        for( int index = 0; index < sentences.size(); index++)
+        {
+            String line = sentences.get(index);
+
+            DSASentence dsaSentence = new DSASentence( line );
+            dsaSentence.setId(index);
+
+            this.run(dsaSentence, needSegment);
+
+            paragraph.sentences.add(dsaSentence);
+        }
+
+        //2：句间关系的识别
+
+
+        return null;
+    }
+
+    public DSASentence run(DSASentence sentence, boolean needSegment) throws  IOException
     {
         //1: 针对一句话识别句内关系
-        DSASentence sentence = new DSASentence( line );
 
         //2: 识别单个连词
         this.findConnWordWithML(sentence, needSegment);
@@ -105,9 +134,9 @@ public class DiscourseParser
     {
         List<Term> words = null;
 
-        //不需要分词, 已经分好词的结果，那么我们需要词性标注的结果
         if(needSegment == false)
         {
+            //不需要分词, 已经分好词的结果，那么我们需要词性标注的结果
             List<String> lists = Arrays.asList(sentence.getContent().split(" "));
             words = NatureRecognition.recognition(lists, 0) ;
 
@@ -482,8 +511,8 @@ public class DiscourseParser
         //针对每个连词都需要进行处理
         for( DSAConnective curWord : conns )
         {
-            String  wContent = curWord.getContent();
             Tree curWordNode = null;
+            String  wContent = curWord.getContent();
 
             //a: 查找该词在短语结构分析树中所在的节点
             int index = 0;
@@ -542,9 +571,11 @@ public class DiscourseParser
         {
             DSAConnective cur = iter.next();
 
-            if(cur.getArg1EDU() == null || cur.getArg2EDU() == null ) iter.remove();
+            if(cur.getArg1EDU() == null || cur.getArg2EDU() == null )
+            {
+                iter.remove();
+            }
         }
-
     }
 
 
@@ -847,29 +878,10 @@ public class DiscourseParser
     private void recognizeImpRelationType(DSASentence sentence)
     {
         // 在基本的EDU的基础上开始进行两两匹配
+        DSAEDU rootEDU = sentence.getRootEDU();
 
-    }
+        //获取两个EDU
 
-
-    /**
-     * 针对一篇文章进行分析。
-     * @param fPath: 原始语料的路径
-     */
-    private void parseRawFile(String fPath) throws Exception
-    {
-        //0: 将文章读取并得到文章中的句子集合
-        String fileContent = util.readFileToString(fPath);
-        ArrayList<String> sentences = util.filtStringToSentence(fileContent);
-
-
-        //1：首先是句内关系的判断
-        for( String sentence : sentences )
-        {
-            DSASentence dsaSentence = new DSASentence( sentence );
-            //this.recognizeRelationInSentence( dsaSentence.getContent() );
-            //this.findConnectiveWithRule(dsaSentence);
-
-        }
 
     }
 

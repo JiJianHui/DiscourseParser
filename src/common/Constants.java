@@ -65,7 +65,7 @@ public class Constants
 
 
     //中文停用词词表,注意此处的停用词词表中也把中文的连词当做了停用词
-    public static String Stop_Word_Path_cn = "F:\\Corpus Data\\ChinseseStopWord\\Stopwords_cn_1208.txt";
+    public static String Stop_Word_Path_cn = "/resource/dictionary/topwords_cn_1208.txt";
 
     //ltp分析结果是独立保存的，sentID保存了每个句子对应的编号。这样就可以找到对应的处理结果
     public static String Ltp_XML_Result_P3        = "data/p3";
