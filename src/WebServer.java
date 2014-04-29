@@ -49,8 +49,7 @@ public class WebServer
 
             System.out.println("get a query:" + line);
 
-            DSASentence sentence = new DSASentence(line);
-            dsaParser.run(sentence, false);
+            DSASentence sentence = dsaParser.run(line, false);
 
             String response = "";
 
