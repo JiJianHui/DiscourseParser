@@ -1,7 +1,9 @@
 package common;
 
+import org.ansj.dic.LearnTool;
 import org.ansj.domain.Term;
 import org.ansj.recognition.NatureRecognition;
+import org.ansj.splitWord.analysis.NlpAnalysis;
 import resource.Resource;
 
 import java.io.IOException;
@@ -25,8 +27,24 @@ public class Test
         //Test.testCalendar();
         //Test.getConnCagInSymCiLin();
 
-        Test.testHashMapSort();
+        //Test.testHashMapSort();
+        //Test.testChineseWord();
+        Test.testAnsjSegmentWord();
 
+    }
+
+    public static void testChineseWord()
+    {
+        String test  = "Hi你好吗【】";
+        char[] chars = test.toCharArray();
+        byte[] bytes = test.getBytes();
+
+        System.out.println(test);
+
+        for(char ch:chars)
+        {
+            System.out.println(ch);
+        }
     }
 
     public static void testHashMapSort()
@@ -79,6 +97,14 @@ public class Test
         List<Term> recognition = NatureRecognition.recognition(lists, 0) ;
 
         System.out.println(recognition);
+    }
+
+    public static void testAnsjSegmentWord()
+    {
+        String content   = "浦东开发开放是一项振兴上海，建设现代化经济、贸易、金融中心的跨世纪工程，因此大量出现的是以前不曾遇到过的新情况、新问题。";
+        LearnTool learn  = new LearnTool();
+        List<Term> parse = NlpAnalysis.parse(content, learn);
+        System.out.println(parse);
     }
 
     public static void calendarAndDate()

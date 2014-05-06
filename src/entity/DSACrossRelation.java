@@ -11,14 +11,15 @@ public class DSACrossRelation
 {
     public String relNO;
     public String relType;
+    public Double probality;
 
     public Integer arg1SentID;
     public Integer arg2SentID;
 
-    public String arg1SentContent;
-    public String arg2SentContent;
+    public String arg1Content;
+    public String arg2Content;
 
     public String connective;
-
+    public DSAConnective conn;
 
 }

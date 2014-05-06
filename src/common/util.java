@@ -561,4 +561,37 @@ public class util
 
         return result;
     }
+
+    /**在max范围内获取length个不重复的随机数。返回的是一个Boolean数组，如果下表index对应的值为true，就代表产生了他**/
+    public static boolean[] getRandomArrays(int max, int length)
+    {
+        boolean[] exist = new boolean[max]; //判断是否出现过
+        Random r = new Random(max);
+        int tempValue = 0;
+
+        for(int i = 0; i < length; i++)
+        {
+            do{ tempValue = r.nextInt(max); }while( exist[tempValue] );
+
+            exist[tempValue] = true;
+        }
+
+        return exist;
+    }
+
+    /**将一个集合随机分成训练集和测试集合。**/
+    public static void randomSplitList(ArrayList<String> lines, int trainLength,
+                                       ArrayList<String> trainDatas, ArrayList<String> testDatas)
+    {
+        int max = lines.size();
+        boolean[] randomValues = getRandomArrays(max, trainLength);
+
+        for(int index = 0; index < max; index++)
+        {
+            if( randomValues[index] )
+                trainDatas.add( lines.get(index) );
+            else
+                testDatas.add( lines.get(index) );
+        }
+    }
 }

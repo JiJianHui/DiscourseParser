@@ -11,7 +11,7 @@ import common.Constants;
  * Time: 2014-03-05 20:14
  * Email: jhji@ir.hit.edu.cn
  */
-public class MLVectorItem
+public class ConnVectorItem
 {
     private String content; //该记录的实际的词的内容
 
@@ -37,7 +37,7 @@ public class MLVectorItem
     private double ambiguity;       //该连词在连词词典中指示关系的歧义度。指示最大的关系的概率
     private double occurInDict;    //在连词词典中出现的次数,如果没有出现，则默认为0
 
-    public MLVectorItem(String content)
+    public ConnVectorItem(String content)
     {
         this.content         = content;
 

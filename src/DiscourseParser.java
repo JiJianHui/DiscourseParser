@@ -1,5 +1,6 @@
 import common.Constants;
 import common.LibSVMTest;
+import common.relRecSVM;
 import common.util;
 import edu.stanford.nlp.ling.Label;
 import edu.stanford.nlp.trees.Tree;
@@ -9,8 +10,10 @@ import org.ansj.domain.Term;
 import org.ansj.recognition.NatureRecognition;
 import org.ansj.splitWord.analysis.NlpAnalysis;
 import org.dom4j.DocumentException;
+import recognize.relation.ImpRelFeatureExtract;
+import recognize.relation.RelVectorItem;
+import recognize.word.ConnVectorItem;
 import resource.Resource;
-import recognize.word.MLVectorItem;
 
 import java.io.IOException;
 import java.util.*;
@@ -29,7 +32,10 @@ public class DiscourseParser
 
     private ArrayList<DSASentence> sentences;   //句子集合
 
-    private LibSVMTest libsvmMode = null;   //连词识别模型
+    private LibSVMTest libsvmMode     = null;   //连词识别模型
+
+    private relRecSVM relationSVMMode = null;   //隐式关系识别模型
+    private ImpRelFeatureExtract impRelFeatureExtract = null;
 
     private PhraseParser phraseParser;  //短语结构分析
 
@@ -37,8 +43,6 @@ public class DiscourseParser
     {
         needSegment = true;
         sentences   = new ArrayList<DSASentence>();
-
-        System.out.println("[--Info--]Loading Resource: word and relation dictionary");
 
         //1: 加载词典信息
         Resource.LoadExpConnectivesDict();
@@ -52,15 +56,20 @@ public class DiscourseParser
         //4: 加载并列连词词典
         Resource.LoadParallelWordDict();
 
-        //5: 加载连词识别svm模型
+        //5: 加载连词Arg位置统计数据
+        Resource.LoadConnectiveArgs();
+        Resource.LoadConnInP2AndP3();
+
+        //6: 加载连词识别svm模型
         libsvmMode = new LibSVMTest();
         libsvmMode.loadModel();
 
-        //6: 加载短语结构分析
+        //7: 加载短语结构分析
         this.phraseParser = new PhraseParser();
 
-        //7: 加载连词Arg位置统计数据
-        Resource.LoadConnectiveArgs();
+        relationSVMMode = new relRecSVM();
+        relationSVMMode.loadModel();
+        impRelFeatureExtract = new ImpRelFeatureExtract();
     }
 
 
@@ -68,53 +77,109 @@ public class DiscourseParser
      * 针对一篇文章进行分析。首先需要将一篇文章进行分句，然后对每个句子进行处理。
      * 输入的是一篇文章的内容，返回的是封装好的DSA对象。
      */
-    private DSAParagraph parseRawFile(String fileContent, boolean needSegment) throws Exception
+    public DSAParagraph parseRawFile(String fileContent, boolean needSegment) throws Exception
     {
         DSAParagraph paragraph = new DSAParagraph(fileContent);
 
         //0: 将文章读取并得到文章中的句子集合
         ArrayList<String> sentences = util.filtStringToSentence(fileContent);
 
-        //1：首先是句内关系的判断
+
+        //1：句内关系的判断:包括了显式和隐式关系的过程
         for( int index = 0; index < sentences.size(); index++ )
         {
             String line = sentences.get(index);
 
-            DSASentence dsaSentence = this.run(line, needSegment);
-
+            DSASentence dsaSentence = new DSASentence(line);
             dsaSentence.setId(index);
+
+            this.processSentence(dsaSentence, needSegment);
 
             paragraph.sentences.add(dsaSentence);
         }
 
-        //2：句间关系的识别
 
-        return null;
+        //2：句间关系的识别:跨句显式关系识别,相邻的两句是一个候选
+        for(int index = 0; index < paragraph.sentences.size() - 1; index++)
+        {
+            DSASentence curSentence = paragraph.sentences.get(index);
+            DSASentence nextSentence = paragraph.sentences.get(index + 1);
+
+            //a: 判断是否是句间关系中的显式关系
+            boolean hasExpRel = getCrossExpRelInPara(paragraph, curSentence, nextSentence);
+            
+            if( hasExpRel ) continue;
+
+            //b: 判断是否是隐式关系
+            int senseType = getCrossImpInPara(paragraph, curSentence, nextSentence);
+        }
+
+        return paragraph;
     }
 
-    public DSASentence run(String line, boolean needSegment) throws  IOException
+    /**
+     * 处理一个封装好的DSASentence，是旧版本run方法的重写。
+     */
+    public void processSentence(DSASentence sentence, boolean needSegment) throws IOException
     {
-        boolean tempResult = true;
-        DSASentence sentence = new DSASentence( line );
-
         //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
         this.preProcess(sentence, needSegment);
 
         //2: 识别单个连词
         this.findConnWordWithML(sentence);
+        this.markConnAsInterOrCross(sentence);
 
         //3: 识别并列连词：不仅...而且
         this.findParallelWord(sentence);
 
         //4: 将句子按照短语结构拆分成基本EDU
         //this.findArgumentInLine(sentence);
-        tempResult = this.findArgumentWithPhraseParser(sentence);
+        boolean tempResult = this.findArgumentWithPhraseParser(sentence);
+
+        //4.1：避免出现句子结构非法的Sentence
+        if( !tempResult ){ sentence.setIsCorrect(false); return; }
+
+        //5: 确定每个连词所涉及到的两个EDU来产生候选显式关系
+        this.matchConnAndEDUforExpRelation(sentence);
+        this.matchParallelConnAndEDUforExpRelation(sentence);
+
+        //6: 根据获取到的信息，识别显式句间关系
+        this.recognizeExpRelationType(sentence);
+
+        //7: 识别可能存在的隐式句间关系
+        this.getCandiateImpRelation(sentence);
+        this.recognizeImpRelationType(sentence);
+    }
+
+    /**
+     * 处理一个句子内部的句内关系。输入为字符串和是否需要分词.
+     * 注意该方法已经被ProcessSentence替换。因为涉及到了sentID的问题。
+     ***/
+    public DSASentence run(String line, boolean needSegment) throws  IOException
+    {
+        DSASentence sentence = new DSASentence( line );
+        sentence.setId(0);
+
+        //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
+        this.preProcess(sentence, needSegment);
+
+        //2: 识别单个连词
+        this.findConnWordWithML(sentence);
+        this.markConnAsInterOrCross(sentence);
+
+        //3: 识别并列连词：不仅...而且
+        this.findParallelWord(sentence);
+
+        //4: 将句子按照短语结构拆分成基本EDU
+        //this.findArgumentInLine(sentence);
+        boolean tempResult = this.findArgumentWithPhraseParser(sentence);
 
         //4.1：避免出现句子结构非法的Sentence
         if( !tempResult ){ sentence.setIsCorrect(false); return sentence; }
 
-        //5: 确定每个连词所涉及到的两个EDU
-        this.matchConnectiveAndEDU(sentence);
+        //5: 确定每个连词所涉及到的两个EDU来产生候选显式关系
+        this.matchConnAndEDUforExpRelation(sentence);
+        this.matchParallelConnAndEDUforExpRelation(sentence);
 
         //6: 根据获取到的信息，识别显式句间关系
         this.recognizeExpRelationType(sentence);
@@ -125,6 +190,117 @@ public class DiscourseParser
         return sentence;
     }
 
+
+    /**判断一个段落中的两个句子是否存在显式的句间关系。**/
+    public boolean getCrossExpRelInPara(DSAParagraph para, DSASentence curSentence, DSASentence nextSentence)
+    {
+        boolean hasExpRel = false;
+
+        //1: 首先判断是否存在connArgArg类型的关系
+        for(DSAConnective conn:curSentence.getConWords())
+        {
+            if( !conn.getInterConnective() && conn.getIsConnective() )
+            {
+                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
+                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
+
+                if( connArgArg > argConnArg )
+                {
+                    DSACrossRelation crossRelation = new DSACrossRelation();
+
+                    crossRelation.arg1SentID  = curSentence.getId();
+                    crossRelation.arg2SentID  = nextSentence.getId();
+                    crossRelation.arg1Content = curSentence.getContent();
+                    crossRelation.arg2Content = nextSentence.getContent();
+
+                    crossRelation.conn        = conn;
+                    crossRelation.relType     = Constants.EXPLICIT;
+
+                    DSAWordDictItem item = Resource.allWordsDict.get( conn.getContent() );
+                    double probality     = item.getMostExpProbality();
+                    String senseNO       = item.getMostExpProbalityRelNO();
+
+                    crossRelation.relNO     = util.convertOldRelIDToNew(senseNO);
+                    crossRelation.probality = probality;
+
+                    para.crossRelations.add(crossRelation);
+
+                    hasExpRel = true;
+                }
+            }
+        }
+
+        //2: 判断是否存在conn-Arg-Arg类型的关系
+        for( DSAConnective conn:nextSentence.getConWords() )
+        {
+            if( !conn.getInterConnective() && conn.getIsConnective() )
+            {
+                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
+                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
+
+                if( connArgArg <= argConnArg )
+                {
+                    DSACrossRelation crossRelation = new DSACrossRelation();
+
+                    crossRelation.arg1SentID  = curSentence.getId();
+                    crossRelation.arg2SentID  = nextSentence.getId();
+                    crossRelation.arg1Content = curSentence.getContent();
+                    crossRelation.arg2Content = nextSentence.getContent();
+
+                    crossRelation.conn        = conn;
+                    crossRelation.relType     = Constants.EXPLICIT;
+
+                    DSAWordDictItem item = Resource.allWordsDict.get( conn.getContent() );
+                    double probality     = item.getMostExpProbality();
+                    String senseNO       = item.getMostExpProbalityRelNO();
+
+                    crossRelation.relNO     = util.convertOldRelIDToNew(senseNO);
+                    crossRelation.probality = probality;
+
+                    para.crossRelations.add(crossRelation);
+
+                    hasExpRel = true;
+                }
+            }
+        }
+
+        return hasExpRel;
+    }
+
+
+    /**判断一个段落中的两个句子是否存在隐式关系**/
+    private int getCrossImpInPara(DSAParagraph para, DSASentence curSentence,
+                                  DSASentence nextSentence) throws IOException
+    {
+        String cur  = curSentence.getSegContent();
+        String nex = nextSentence.getSegContent();
+
+        RelVectorItem item = impRelFeatureExtract.getFeatureLine(cur, nex);
+        item.relNO         = Constants.DefaultRelNO;
+
+        int senseType = this.relationSVMMode.predict( item.toLineForLibsvm() );
+
+        //如果存在非0隐式关系
+        if( senseType != 0 )
+        {
+            DSACrossRelation crossRelation = new DSACrossRelation();
+
+            crossRelation.arg1SentID  = curSentence.getId();
+            crossRelation.arg2SentID  = nextSentence.getId();
+            crossRelation.arg1Content = curSentence.getContent();
+            crossRelation.arg2Content = nextSentence.getContent();
+
+            crossRelation.relType     = Constants.IMPLICIT;
+            crossRelation.relNO       = String.valueOf(senseType);
+            crossRelation.probality   = 1.0;
+            crossRelation.conn        = null;
+
+            //TO-DO: 后续可以添加上候选连词，比如哪个连词可以插入
+            para.crossRelations.add(crossRelation);
+        }
+
+        return senseType;
+    }
 
     //-------------------------------0: 对句子进行底层处理--------------------------
 
@@ -168,13 +344,13 @@ public class DiscourseParser
         int beginIndex = 0;
         String segmentResult = "";
 
-        ArrayList<MLVectorItem> candidateTerms = new ArrayList<MLVectorItem>();
+        ArrayList<ConnVectorItem> candidateTerms = new ArrayList<ConnVectorItem>();
 
         //a: 针对句子中的每个词进行抽取特征
         for( Term wordItem : sentence.getAnsjWordTerms() )
         {
-            String wContent   = wordItem.getName().trim();
-            MLVectorItem item = new MLVectorItem(wContent);
+            String wContent     = wordItem.getName().trim();
+            ConnVectorItem item = new ConnVectorItem(wContent);
 
             segmentResult += wContent + " ";
 
@@ -217,13 +393,13 @@ public class DiscourseParser
         }
 
         //b: 使用SVM模型判断每个候选的词是否是连词
-        for( MLVectorItem item : candidateTerms )
+        for( ConnVectorItem item : candidateTerms )
         {
             int label = libsvmMode.predict(item);
 
-            if( label > 0 )
+            if( label > 0 || item.getOccurInDict() > 100 )
             {
-                DSAConnective connective = new DSAConnective( item.getContent() );
+                DSAConnective connective = new DSAConnective( item.getContent(), sentence.getId() );
 
                 connective.setPosTag(item.getPos());
                 connective.setPrevPosTag(item.getPrevPos());
@@ -240,6 +416,44 @@ public class DiscourseParser
 
 
     /**
+     * 为了区分一个连词是句间连词还是句内连词，在识别了连词之后，需要首先判断连词是连接句内关系还是连接句间关系。
+     * DSAConnective里面有一个属性：isInterConnective
+     **/
+    private void markConnAsInterOrCross(DSASentence sentence)
+    {
+        for(DSAConnective curWord:sentence.getConWords() )
+        {
+            String wContent = curWord.getContent();
+
+            //1: 获取该连词在p2和p3中分别出现的次数
+            int numInP2 = 0, numInP3 = 0;
+            if( Resource.ConnInP2AndP3.containsKey(wContent) )
+            {
+                numInP2 = Resource.ConnInP2AndP3.get(wContent)[0];
+                numInP3 = Resource.ConnInP2AndP3.get(wContent)[1];
+            }
+
+            //2：获取该连词连接Arg的类型
+            int argConnArg = 0, connArgArg = 0;
+            if( Resource.ConnectiveArgNum.containsKey(wContent) )
+            {
+                argConnArg = Resource.ConnectiveArgNum.get(wContent)[0];
+                connArgArg = Resource.ConnectiveArgNum.get(wContent)[1];
+            }
+
+            //3: 连词位于句子中间的位置, 是否位于句首
+            int position = (int) curWord.getPositionInLine();
+
+            //4：是否位于第一个短句内
+            boolean inSentenceHead = true;
+            String temp = sentence.getContent().substring(0, position);
+            if( temp.contains("，") || temp.contains(",") ) inSentenceHead = false;
+
+            if( numInP2 > numInP3 && inSentenceHead ) curWord.setInterConnective(false);
+        }
+    }
+
+    /**
      * 3: 查找一段文字中的并列连词，比如：不仅...而且,
      * 目前的识别方法只是识别了一个句子中最为可能的并列连词。即按照出现次数的大小来判断
      * @param sentence
@@ -249,7 +463,7 @@ public class DiscourseParser
         int occurTimes      = -1;
         String sentContent  = sentence.getSegContent();
 
-        ParallelConnective parallelConnective = null;
+        DSAConnective parallelConnective = null;
 
         for(Map.Entry<String, Integer> entry:Resource.ExpParallelWordDict.entrySet())
         {
@@ -290,11 +504,14 @@ public class DiscourseParser
                 //2: 修正候选并列连词列表. 只获取出现次数最大的并列连词
                 if(  numInDict > occurTimes )
                 {
-                    if( parallelConnective == null ) parallelConnective = new ParallelConnective();
+                    if( parallelConnective == null )
+                        parallelConnective = new DSAConnective(parallelWord, sentence.getId());
+
                     occurTimes = numInDict;
                     parallelConnective.setContent(parallelWord);
                     parallelConnective.setBeginIndex1(beginIndex1);
                     parallelConnective.setBeginIndex2(beginIndex2);
+                    parallelConnective.setParallelWord(true);
                 }
             }
         }
@@ -368,8 +585,7 @@ public class DiscourseParser
             relation.setArg1Content(arg1.getContent());
             relation.setArg2Content(arg2.getContent());
             relation.setDsaConnective(curWord);
-            relation.setRelType(Constants.ExpRelationType);
-
+            relation.setRelType(Constants.EXPLICIT);
             sentence.getRelations().add(relation);
         }
     }
@@ -529,99 +745,51 @@ public class DiscourseParser
      * 寻找显式连词所关联的两个EDU
      * @param sentence
      */
-    private void matchConnectiveAndEDU(DSASentence sentence)
+    private void matchConnAndEDUforExpRelation(DSASentence sentence)
     {
         DSAEDU rootEDU = sentence.getRootEDU();
-
         ArrayList<DSAConnective> conns = sentence.getConWords();
-        List<Tree> phraseLeaves = rootEDU.getRoot().getLeaves();
 
-        //针对每个连词都需要进行处理
+        //针对每个连词都需要进行处理. 每个连词最少有一个EDU存在。
         for( DSAConnective curWord : conns )
         {
-            Tree curWordNode = null;
-            String  wContent = curWord.getContent();
+            if( !curWord.getInterConnective() ) continue;
 
-            //a: 查找该词在短语结构分析树中所在的节点
-            int index = 0;
-            for(Tree curNode : phraseLeaves)
-            {
-                String curWordContent = curNode.nodeString();
+            String wContent = curWord.getContent();
+            DSAEDU connEDU  = this.getConnectiveBelongEDU(curWord, rootEDU);
 
-                if( curWordContent.equalsIgnoreCase(wContent) )
-                {
-                    if( Math.abs( curWord.getPositionInLine()-index ) < 3 )
-                    {
-                        curWordNode = curNode; break;
-                    }
-                }
-                index = index + curWordContent.length();
-            }
-
-            //b: 对connNode进行去除单链泛化,To-Do考虑修饰型连词 Modified Connective:部分原因是：
-            while( curWordNode.parent(rootEDU.getRoot()) != null )
-            {
-                if(curWordNode.parent(rootEDU.getRoot()).children().length == 1)
-                {
-                    curWordNode = curWordNode.parent(rootEDU.getRoot());
-                }
-                else break;
-            }
-            curWord.setConnNode(curWordNode);
-
-            //c: 确定该连词所依附的EDU，向上直到碰见的第一个EDU节点作为父节点连词依附的EDU
-            Tree parentNode = curWordNode.parent( rootEDU.getRoot() );
-
-            int num = 0, error = 0;
-            while( parentNode != null && !this.isAEDURoot(parentNode, rootEDU) )
-            {
-                parentNode = parentNode.parent(rootEDU.getRoot());
-                if( parentNode.nodeString().equalsIgnoreCase("np") || num++ > 3 ) {
-                    error = 1;break;
-                }
-            }
-
-            //如果该连词没有附着在任何一个有效的EDU上
-            if( error == 1 || parentNode == null )
-            {
-                System.out.print("[--Error--] Not Found " + wContent + "'s ParentNode In ");
-                System.out.print(sentence.getContent());
-                continue;
-            }
-
-            DSAEDU arg2EDU = this.findTreeEDU(parentNode, rootEDU);
-
-            if( arg2EDU == null )
+            if( connEDU == null )
             {
                 System.out.print("[--Error--] Not Found " + wContent + "'s EDU In ");
-                System.out.print(sentence.getContent());
+                System.out.println(sentence.getContent());
+                curWord.setIsConnective(false);
                 continue;
             }
 
-            DSAInterRelation interRelation = new DSAInterRelation();
-
             //d: 确定arg2包括的内容：从arg2EDU开始，向右的所有内容
-            String arg2Content = this.getArg2Content(curWord, arg2EDU);
+            String arg2Content = this.getArg2Content(curWord, connEDU);
 
             //e: 确定arg1包括的内容：这个就比较悲剧了。
-            String arg1Content = this.getArg1Content(curWord, arg2EDU);
-        }
+            String arg1Content = this.getArg1Content(curWord, connEDU);
 
-        Iterator<DSAConnective> iter = conns.iterator();
+            if( arg2Content == null || arg2Content.length() < 2 ){ curWord.setIsConnective(false); continue; }
+            if( arg1Content == null || arg1Content.length() < 2 ){ curWord.setInterConnective(false); continue;}
 
-        while( iter.hasNext() )
-        {
-            DSAConnective cur = iter.next();
+            //f: 生成候选关系, 此时关系还只有连词和argument，还没有识别具体关系
+            DSAInterRelation interRelation = new DSAInterRelation();
 
-            if(cur.getArg1EDU() == null || cur.getArg2EDU() == null )
-            {
-                iter.remove();
-            }
+            interRelation.setDsaConnective(curWord);
+            interRelation.setArg2Content(arg2Content);
+            interRelation.setArg1Content(arg1Content);
+            interRelation.setSentID(sentence.getId());
+
+            sentence.getRelations().add(interRelation);
         }
     }
 
+
     /**获取一个连词在短语结构树中所依附的EDU节点。最终返回的是该连词最直接所属的EDU节点**/
-    private DSAEDU getConnectiveNode(DSAConnective curWord, DSAEDU rootEDU)
+    private DSAEDU getConnectiveBelongEDU(DSAConnective curWord, DSAEDU rootEDU)
     {
         //a: 查找该词在短语结构分析树中所在的节点
         int index = 0;
@@ -645,7 +813,12 @@ public class DiscourseParser
             index = index + curWordContent.length();
         }
 
-        if( curWordNode == null ) return null;
+        if( curWordNode == null )
+        {
+            System.out.print("[--Error--] Not Found " + wContent + "'s Tree Node In ");
+            System.out.print(rootEDU.getContent());
+            return null;
+        }
 
         //b: 对connNode进行去除单链泛化,To-Do考虑修饰型连词 Modified Connective:部分原因是：
         while( curWordNode.parent(rootEDU.getRoot()) != null )
@@ -656,6 +829,7 @@ public class DiscourseParser
             }
             else break;
         }
+        curWord.setConnNode(curWordNode);
 
         //c: 确定该连词所依附的EDU，向上直到碰见的第一个EDU节点作为父节点连词依附的EDU
         int num = 0, error = 0;
@@ -664,12 +838,13 @@ public class DiscourseParser
         while( parentNode != null && !this.isAEDURoot(parentNode, rootEDU) )
         {
             parentNode = parentNode.parent(rootEDU.getRoot());
-            if( parentNode.nodeString().equalsIgnoreCase("np") || num++ > 3 ) {
+            if( parentNode.nodeString().equalsIgnoreCase("np") || num++ > 3 )
+            {
                 error = 1;break;
             }
         }
 
-        //如果该连词没有附着在任何一个有效的EDU上
+        //d: 如果该连词没有附着在任何一个有效的EDU上
         if( error == 1 || parentNode == null )
         {
             System.out.print("[--Error--] Not Found " + wContent + "'s ParentNode In ");
@@ -806,6 +981,9 @@ public class DiscourseParser
         if( arg2EDU.getChildrenEDUS().size() <= 1 )
         {
             DSAEDU parentEDU = arg2EDU.getParentEDU();
+
+            if( parentEDU == null ) return null;
+
             int parentChildSize = parentEDU.getChildrenEDUS().size();
 
             //查找对应的arg1EDU位置。
@@ -883,6 +1061,9 @@ public class DiscourseParser
         if( arg2EDU.getChildrenEDUS().size() <= 1 )
         {
             DSAEDU parentEDU    = arg2EDU.getParentEDU();
+
+            if( parentEDU == null ) return null;
+
             int parentChildSize = parentEDU.getChildrenEDUS().size() - 1;
 
             //查找对应的arg1EDU位置。
@@ -952,6 +1133,26 @@ public class DiscourseParser
         return arg1Content;
     }
 
+
+    /**使用并列连词来获取EDU来产生候选的关系**/
+    private void matchParallelConnAndEDUforExpRelation(DSASentence sentence)
+    {
+        String segSentContent = sentence.getSegContent();
+
+        for(DSAConnective curord:sentence.getParallelConnectives())
+        {
+            String wContent = curord.getContent();
+            String arg1Content = segSentContent.substring( curord.getBeginIndex1(), curord.getBeginIndex2() );
+            String arg2Content = segSentContent.substring( curord.getBeginIndex2() );
+
+            DSAInterRelation interRelation = new DSAInterRelation();
+            interRelation.setArg1Content(arg1Content);
+            interRelation.setArg2Content(arg2Content);
+            interRelation.setSentID(sentence.getId());
+            interRelation.setDsaConnective(curord);
+        }
+    }
+
     //-------------------------------3: Sense Recognize---------------------------
 
     /***识别具体的显式关系类型**/
@@ -970,6 +1171,7 @@ public class DiscourseParser
             candiatateRel.setRelNO( relNO );
         }
          **/
+        /**
         //根据识别出来的显式连词来识别显式关系
         for(DSAConnective curWord : sentence.getConWords() )
         {
@@ -989,20 +1191,77 @@ public class DiscourseParser
             curWord.setExpRelProbality(mostExpProbality);
             curWord.setExpRelType(mostExpProbalityType);
         }
+         **/
+        for( DSAInterRelation curRel:sentence.getRelations() )
+        {
+            DSAConnective curConn = curRel.getDsaConnective();
+            String wContent       = curConn.getContent();
+
+            DSAWordDictItem item  = Resource.allWordsDict.get(wContent);
+            double probality      = item.getMostExpProbality();
+            String senseNO        = item.getMostExpProbalityRelNO();
+
+            curRel.setRelType(Constants.EXPLICIT);
+            curRel.setRelNO( util.convertOldRelIDToNew(senseNO) );
+            curRel.setProbality(probality);
+        }
     }
 
 
-    /***识别可能存在的隐式句间关系**/
-    private void recognizeImpRelationType(DSASentence sentence)
+    /**不识别，只是用来生成候选的隐式关系**/
+    private void getCandiateImpRelation(DSASentence sentence) throws IOException
     {
+        if(sentence.getRelations().size() > 0 ) return;
+
         // 在基本的EDU的基础上开始进行两两匹配
         DSAEDU rootEDU = sentence.getRootEDU();
 
-        //获取两个EDU
+        //获取句子中的EDU对，作为隐式关系的候选
+        //从根部往下开始寻找第一个孩子节点个数大于1的EDU节点
+        while( rootEDU.getChildrenEDUS().size() == 1 )
+        {
+            rootEDU = rootEDU.getChildrenEDUS().get(0);
+        }
 
+        //最终退出的原因可能是因为只有一个孩子节点，下面没有了
+        if( rootEDU.getChildrenEDUS().size() > 1 )
+        {
+            //两两顺序配对产生候选
+            for(int index = 1; index < rootEDU.getChildrenEDUS().size(); index++)
+            {
+                DSAEDU curEDU  = rootEDU.getChildrenEDUS().get(index);
+                DSAEDU prevEDU = rootEDU.getChildrenEDUS().get(index - 1);
 
+                DSAInterRelation interRelation = new DSAInterRelation();
+
+                interRelation.setSentID(sentence.getId());
+                interRelation.setRelType(Constants.IMPLICIT);
+                interRelation.setRelNO(Constants.DefaultRelNO);
+
+                interRelation.setArg1Content(prevEDU.getContent());
+                interRelation.setArg2Content(curEDU.getContent());
+
+                //判断是否有关系
+                RelVectorItem item = impRelFeatureExtract.getFeatureLine(
+                interRelation.getArg1Content(), interRelation.getArg2Content() );
+                item.relNO = Constants.DefaultRelNO;
+
+                int senseType = this.relationSVMMode.predict( item.toLineForLibsvm() );
+
+                if( senseType == 0 ) continue;
+
+                interRelation.setRelNO( String.valueOf(senseType) );
+                //sentence.getImpRelations().add(interRelation);
+                sentence.getRelations().add(interRelation);
+            }
+        }
     }
 
+    /***识别可能存在的隐式句间关系**/
+    private void recognizeImpRelationType(DSASentence sentence) throws IOException
+    {
+
+    }
 
     private ArrayList<DSAConnective> findConnective(String line) throws Exception
     {
@@ -1030,14 +1289,19 @@ public class DiscourseParser
         //DSASentence dsaSentence = new DSASentence(test);
         //discourseParser.analysisSentenceConnective(dsaSentence);
         //discourseParser.run(test);
+        String twoSentence = "据 了解 ， 高行健 目前 已经 完成 了 一 部 新作 《 另 一 种 美 》 的 书稿 ， 并且 表示 能够 在 台湾 出版 。 高行健 １２月 １０号 将 在 瑞典 首都 斯德哥尔摩 举行 的 赠奖 仪式 当中 和 其他 诺贝尔 奖 得主 接受 瑞典 国王 卡尔 十六 世 古斯达夫 的 颁奖 。";
 
         boolean needSegment  = false;
+        /**
         DSASentence sentence = new DSASentence(simple);
 
         discourseParser.findConnWordWithML(sentence);
         discourseParser.findArgumentWithPhraseParser(sentence);
 
         System.out.println(sentence.getConWords().get(0).getArg2EDU().getContent());
+         **/
+        DiscourseParser dp = new DiscourseParser();
+        dp.parseRawFile(twoSentence, needSegment);
     }
 }
 

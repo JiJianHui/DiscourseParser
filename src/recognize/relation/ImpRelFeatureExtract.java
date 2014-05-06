@@ -48,6 +48,7 @@ public class ImpRelFeatureExtract
         stanfordParser = new PhraseParser();
     }
 
+    /**为了训练隐式关系识别的模型，抽取对应的特征数据。**/
     public void run() throws IOException
     {
         //获取原始标注语料中的隐式关系的标注实例
@@ -59,34 +60,21 @@ public class ImpRelFeatureExtract
             String arg2Content   = curRecord.getArg2();
 
             if(relType.equalsIgnoreCase(Constants.EXPLICIT)) continue;
+            //if(curRecord.getRelNO().equalsIgnoreCase(Constants.DefaultRelNO)) continue;
             if( arg1Content.length() > 400 || arg2Content.length() > 400 ) continue;
 
-            //新建一个隐式关系训练实例
-            RelVectorItem item = new RelVectorItem();
+            try
+            {
+                //新建一个隐式关系训练实例
+                RelVectorItem item = this.getFeatureLine(arg1Content, arg2Content);
 
-            item.relNO           = curRecord.getRelNO();
-            item.arg1Content     = arg1Content;
-            item.arg2Content     = arg2Content;
+                item.relNO         = curRecord.getRelNO();
+                item.arg1Content   = arg1Content;
+                item.arg2Content   = arg2Content;
 
-            try{
-
-            //1: 抽取两个句子的极性特征：0:中性，1：褒义 2：贬义
-            item.arg1Sentiment   = this.getSentiment(arg1Content);
-            item.arg2Sentiment   = this.getSentiment(arg2Content);
-
-            //2: 获取句首词特征：主要将第一个词进行同义词转换
-            item.arg1HeadWordTag = this.getHeadWordTag(arg1Content);
-            item.arg2HeadWordTag = this.getHeadWordTag(arg2Content);
-
-            //3: 获取关键词特征，判断在同义词词林中是否存在和常见关联词同类的词
-            item.arg1CueWordTag  = this.getCueWordTag(arg1Content);
-            item.arg2CueWordTag  = this.getCueWordTag(arg2Content);
-
-            //4：获取文本段中的谓词特征，主要是使用依存分析来完成
-            this.getVerbFeature(item);
-
-            items.add(item);
-            }catch (OutOfMemoryError e){
+                items.add(item);
+            }
+            catch (OutOfMemoryError e){
                 continue;
             }
         }
@@ -260,6 +248,30 @@ public class ImpRelFeatureExtract
         }
     }
 
+    /**从两个文本段中提取出隐式关系识别需要的特征。**/
+    public RelVectorItem getFeatureLine(String arg1Content, String arg2Content) throws IOException
+    {
+        RelVectorItem item   = new RelVectorItem();
+        item.arg1Content     = arg1Content;
+        item.arg2Content     = arg2Content;
+
+        //1: 抽取两个句子的极性特征：0:中性，1：褒义 2：贬义
+        item.arg1Sentiment   = this.getSentiment(arg1Content);
+        item.arg2Sentiment   = this.getSentiment(arg2Content);
+
+        //2: 获取句首词特征：主要将第一个词进行同义词转换
+        item.arg1HeadWordTag = this.getHeadWordTag(arg1Content);
+        item.arg2HeadWordTag = this.getHeadWordTag(arg2Content);
+
+        //3: 获取关键词特征，判断在同义词词林中是否存在和常见关联词同类的词
+        item.arg1CueWordTag  = this.getCueWordTag(arg1Content);
+        item.arg2CueWordTag  = this.getCueWordTag(arg2Content);
+
+        //4：获取文本段中的谓词特征，主要是使用依存分析来完成
+        //this.getVerbFeature(item);
+
+        return item;
+    }
     /***
      * 获取常见连词在同义词词林中的标签集合，注意，这个方法是一次性使用。
      * 主要是根据连词词典去寻找同义词词林中的标签集合，并将该标签出现的总次数保存到文件中。

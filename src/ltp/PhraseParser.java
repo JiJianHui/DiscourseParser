@@ -35,7 +35,6 @@ public class PhraseParser
         tlp = this.stanfordParser.getOp().langpack();
         gsf = tlp.grammaticalStructureFactory();
 
-        System.out.println("[--Info--] Init Phrase Parser from chineseFactored.ser.gz");
     }
 
     /***

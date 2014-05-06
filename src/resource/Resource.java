@@ -36,11 +36,13 @@ public class Resource
     public static HashMap<String, Integer> NotAsDiscourseWordDict;
     public static HashMap<String, Integer> ExpParallelWordDict;          //保存了平行连词
 
+    public static HashMap<String, Integer[]> ConnInP2AndP3; //每个连词在句间关系和句内关系中出现的次数
+
     public static LinkedHashMap<String, DSAWordDictItem> allWordsDict;  //存放了与一个关联词对应的关联词类型的整个信息
     public static LinkedHashMap<String, String> connectiveRelationDict; //存放了连词和关系标号的对应关系
 
-    public static HashSet<String> Stop_Words = new HashSet<String>();    //停用词词表
-    public static HashMap<String, Integer[]> ConnectiveArgNum;
+    public static HashSet<String> Stop_Words = new HashSet<String>(); //停用词词表
+    public static HashMap<String, Integer[]> ConnectiveArgNum; //连词连接arg类型:arg-conn-arg和conn-arg-arg
     public static HashMap<String, Integer> Ltp_Xml_Result_SentID_P3; //ltp分析结果的句子和ID的对应关系
 
 
@@ -61,6 +63,8 @@ public class Resource
         ImpConnWordDict          = new HashMap<String, Integer>();
         NotAsDiscourseWordDict   = new HashMap<String, Integer>();
         ExpParallelWordDict      = new HashMap<String, Integer>();
+
+        ConnInP2AndP3            = new HashMap<String, Integer[]>();
 
         allWordsDict             = new LinkedHashMap<String, DSAWordDictItem>();
         connectiveRelationDict   = new LinkedHashMap<String, String>();
@@ -90,7 +94,7 @@ public class Resource
      * 统一加载所有资源，一般很少使用，因为某部分只是需要一部分数据。
      * @throws DocumentException
      */
-    public static void LoadResource() throws DocumentException
+    public static void LoadResource() throws DocumentException, IOException
     {
         System.out.println("[--Info--] Loading Resource....");
 
@@ -106,70 +110,57 @@ public class Resource
     /**
      * 加载显式关联词字典.词典中只包含了常见的连词，并没有包含该连词出现的次数
      */
-    public static void LoadExpConnectivesDict()
+    public static void LoadExpConnectivesDict() throws IOException
     {
         //防止重复加载
         if( ExpConnWordDict.size() > 2 ) return;
 
-        String path = Constants.ExpConWord_Dict_Path;
+        String path = "resource/singWord.txt";
+        System.out.println("[--Info--] Loading Single Explicit Connective From: " + path);
 
-        try
+        //加载单个连词
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLines(path, lines);
+
+        for( String line : lines )
         {
-            //加载单个连词
-            System.out.println("[--Info--] Loading Single Explicit Connective From: " + path);
-            ArrayList<String> lines = new ArrayList<String>();
-            util.readFileToLines(path, lines);
-
-            for( String line : lines )
+            String[] lists = line.split("\t");
+            if(lists.length > 2)
             {
-                String[] lists = line.split("\t");
-                if(lists.length > 2)
-                {
-                    int connNum    = Integer.valueOf(lists[1]);
-                    int notConnNum = Integer.valueOf(lists[2]);
+                int connNum    = Integer.valueOf(lists[1]);
+                int notConnNum = Integer.valueOf(lists[2]);
 
-                    //filter the word as needed
-                    if(connNum == 0) continue;
+                //filter the word as needed
+                if(connNum == 0) continue;
 
-                    ExpConnWordDict.put(lists[0], connNum);
-                    NotAsDiscourseWordDict.put(lists[0], notConnNum);
-                }
+                ExpConnWordDict.put(lists[0], connNum);
+                NotAsDiscourseWordDict.put(lists[0], notConnNum);
             }
-        }
-        catch (Exception e)
-        {
-            System.err.println("Sorry, Load resource Failed. Details:\n" + path);
-            System.exit(1);
         }
     }
 
     /**
      * 加载并列连词词表
      */
-    public static void LoadParallelWordDict()
+    public static void LoadParallelWordDict() throws IOException
     {
-        try
+        if( ExpParallelWordDict.size() > 2 ) return;
+
+        //加载并列连词
+        String path = Constants.ExpParallelWord_Dict_Path;
+        System.out.println("[--Info--] Loading Parallel Explicit Connective From: " + path);
+
+        ArrayList<String> paraLines = new ArrayList<String>();
+        util.readFileToLines(path, paraLines);
+
+        for(String line : paraLines)
         {
-            //加载并列连词
-            String path = Constants.ExpParallelWord_Dict_Path;
-            System.out.println("[--Info--] Loading Parallel Explicit Connective From: " + path);
+            String[] lists = line.trim().split("\t");
 
-            ArrayList<String> paraLines = new ArrayList<String>();
-            util.readFileToLines(path, paraLines);
+            String wContent = lists[0].replace("...", ";");
+            Integer wNum    = Integer.valueOf( lists[1] );
 
-            for(String line : paraLines)
-            {
-                String[] lists = line.trim().split("\t");
-
-                String wContent = lists[0].replace("...", ";");
-                Integer wNum    = Integer.valueOf( lists[1] );
-
-                ExpParallelWordDict.put(wContent, wNum);
-            }
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
+            ExpParallelWordDict.put(wContent, wNum);
         }
     }
 
@@ -178,34 +169,49 @@ public class Resource
      * 实际上    2    1    1    1    1    [X]5-1-1    1    [Y]5-1-1    1
      * 每次加载的是 关联词 + 后面的统计信息
      */
-    public static void LoadWordRelDict()
+    public static void LoadWordRelDict() throws IOException
     {
-        System.out.println("[--Info--] Loading Word and Sense Dict From: " + Constants.Connective_Relation_Path);
-
         if( allWordsDict.size() > 2 ) return;
 
         String path = Constants.Connective_Relation_Path;
-        try
-        {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path), "GBK"));
-            String line;
+        System.out.println("[--Info--] Loading Word and Sense Dict From: " + path);
 
-            while( (line = reader.readLine()) != null )
-            {
-                DSAWordDictItem dsaWord = new DSAWordDictItem(line, true);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path), "GBK"));
 
-                allWordsDict.put( dsaWord.getContent(), dsaWord );
-            }
-            reader.close();
-        }
-        catch (Exception e)
+        String line;
+        while( (line = reader.readLine()) != null )
         {
-            System.err.println("Sorry, Load resource Failed. Details:\n" + path);
-            System.exit(1);
+            DSAWordDictItem dsaWord = new DSAWordDictItem(line, true);
+
+            allWordsDict.put( dsaWord.getContent(), dsaWord );
         }
+        reader.close();
     }
 
 
+    /**
+     * 为了判断一个连词是连接了句内关系还是连接了句间关系，需要连词在句间关系和句内关系中的分布。
+     * 资源文件connDistributionInP2P3.txt保存了对应的数据.
+     * 存储格式为：【连词】【\t】【在p2中出现次数】【\t】【在p3中出现次数】
+     **/
+    public static void LoadConnInP2AndP3() throws IOException, DocumentException
+    {
+        if( ConnInP2AndP3.size() > 2 ) return;
+
+        String fPath = "resource/connDistributionInP2P3.txt";
+        System.out.println("[--Info--] Loading ExpConnectives's Occur's Time In P2 and P3 From " + fPath);
+
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLines(fPath, lines);
+
+        for(String line:lines)
+        {
+            String[] lists = line.split("\t");
+            int wordInP2 = Integer.valueOf(lists[1]);
+            int wordInP3 = Integer.valueOf(lists[2]);
+            ConnInP2AndP3.put(lists[0], new Integer[]{wordInP2,wordInP3} );
+        }
+    }
 
     /**
      * 加载新版本下的训练语料，将训练语料加载为各个record
@@ -213,9 +219,8 @@ public class Resource
      */
     public static void LoadRawRecord() throws DocumentException
     {
-        System.out.println("[--Info--] Loading Raw Record From: " + Constants.Train_Data_Dir);
-
         if( Raw_Train_Annotation_p1.size() > 2 ) return;
+        System.out.println("[--Info--] Loading Raw Record From: " + Constants.Train_Data_Dir);
 
         String dir = Constants.Train_Data_Dir;
         ArrayList<String> files = new ArrayList<String>();
@@ -235,6 +240,7 @@ public class Resource
 
             for(Iterator ite = rootNode.elementIterator(); ite.hasNext();)
             {
+                try{
                 Element sentNode = (Element) ite.next();
 
                 if( sentNode.getName().equals("Sense") )
@@ -253,9 +259,19 @@ public class Resource
                     if( conWord.equalsIgnoreCase("null") ) continue;
                     if( wSpan.equalsIgnoreCase("null") ) continue;
 
+                    int[] arg1Position = new int[2];
+                    int[] arg2Position = new int[2];
+
+                    String[] lists  = annot.split(" ");
+                    arg1Position[0] = Integer.valueOf(lists[0]);
+                    arg1Position[1] = Integer.valueOf(lists[1]);
+
+                    arg2Position[0] = Integer.valueOf(lists[0]);
+                    arg2Position[1] = Integer.valueOf(lists[1]);
+
                     //去除长度过长的语句。
-                    if( fPath.endsWith(Constants.P3_Ending) && source.length() > Constants.Max_Sentence_Length )
-                        continue;
+                    //if( fPath.endsWith(Constants.P3_Ending) && source.length() > Constants.Max_Sentence_Length )
+                        //continue;
 
                     //去除source里面的人工标签 {implicit = 而且}
                     int begIndex = source.indexOf("{implicit =");
@@ -270,7 +286,7 @@ public class Resource
 
                     SenseRecord record = new SenseRecord(type, relNO);
 
-                    record.setText( util.removeAllBlank(source) );
+                    record.setText( source );
                     record.setConnective(conWord);
                     record.setArg1(arg1);
                     record.setArg2(arg2);
@@ -282,10 +298,11 @@ public class Resource
 
                     if( connBeg < lineBeg ) record.setText( conWord + record.getText() );
 
-                    record.setConnBeginIndex( connBeg - lineBeg > 0? connBeg - lineBeg : 0 );
+                    record.setConnBeginIndex( connBeg - lineBeg > 0 ? connBeg - lineBeg : 0 );
 
                     results.add(record);
                 }
+                }catch(Exception e){ e.printStackTrace();continue; }
             }
 
             if( fPath.endsWith(Constants.P1_Ending) )
@@ -310,6 +327,8 @@ public class Resource
      */
     public static void LoadStopWords() throws IOException
     {
+        if( Stop_Words.size() > 2 ) return;
+
         System.out.println("[--Info--] Loading Stop Words From: " + Constants.Stop_Word_Path_cn);
         String path = Constants.Stop_Word_Path_cn;
 
@@ -383,10 +402,10 @@ public class Resource
      **/
     public static void LoadSentimentDict() throws IOException
     {
+        if( SentimentDic.size() > 10 ) return;
+
         String fPath = "resource/dictionary/sentimentDic.txt";
         System.out.println("[--Info--] Loading Sentiment Dictionary From: " + fPath);
-
-        if( SentimentDic.size() > 10 ) return;
 
         ArrayList<String> lines = new ArrayList<String>();
         util.readFileToLines(fPath, lines);
@@ -423,10 +442,10 @@ public class Resource
      **/
     public static void LoadTitleWordDict() throws IOException
     {
+        if( TitleWordDict.size() > 10 ) return;
+
         String fPath = "resource/dictionary/Title_third.txt";
         System.out.println("[--Info--] Loading Third_Title Word Dict From: " + fPath);
-
-        if( TitleWordDict.size() > 10 ) return;
 
         util.readFileToLines(fPath, TitleWordDict);
     }
@@ -437,10 +456,10 @@ public class Resource
      */
     public static void LoadNegationDict() throws IOException
     {
+        if( NegationDict.size() > 10 ) return;
+
         String fPath = "resource/dictionary/negations.txt";
         System.out.println("[--Info--] Loading Negation Word Dictionary From: " + fPath);
-
-        if( NegationDict.size() > 10 ) return;
 
         ArrayList<String> lines = new ArrayList<String>();
         util.readFileToLines(fPath, lines);
@@ -456,10 +475,10 @@ public class Resource
      */
     public static void LoadConnCatgInSymCiLin() throws IOException
     {
+        if( ConnTagInSymCiLin.size() > 10 ) return;
+
         String fPath = "/resource/dictionary/ConnWordCagInSymCiLin.txt";
         System.out.println("[--Info--] Loading ConnWord Tag In SymWord CiLin From: " + fPath);
-
-        if( ConnTagInSymCiLin.size() > 10 ) return;
 
         ArrayList<String> lines = new ArrayList<String>();
         util.readFileToLines(fPath, lines);
@@ -532,5 +551,10 @@ public class Resource
         for(Map.Entry<String, Integer> entry:tags){
             ConnTagInSymCiLinSorted.add(entry.getKey());
         }
+    }
+
+    public static void main(String[] args) throws IOException, DocumentException
+    {
+        Resource.LoadRawRecord();
     }
  }

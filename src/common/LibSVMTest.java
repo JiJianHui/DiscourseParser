@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import libsvm.*;
-import recognize.word.MLVectorItem;
+import recognize.word.ConnVectorItem;
 
 /***libsvm调用类，主要是用于统一连词识别时候的libsvm调用**/
 public class LibSVMTest
@@ -114,12 +114,14 @@ public class LibSVMTest
 
     public void loadModel() throws IOException
     {
-        System.out.println("[--Info--] Loading Connective SVM Model From " + this.modelFilePath );
+        if(this.svmModel != null ) return;
+
+        System.out.println("[--Info--] Loading Connective SVM Model From ./libsvmTrainData_scale.txt.model" );
         this.svmModel = svm.svm_load_model("./libsvmTrainData_scale.txt.model");
     }
 
     /**预测一条输入样本是否是连词**/
-    public int predict(MLVectorItem item) throws IOException
+    public int predict(ConnVectorItem item) throws IOException
     {
         String line = item.toLineForLibSvmWithAnsj();
         //int label = this.predictInFile(line);

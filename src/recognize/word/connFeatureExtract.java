@@ -2,7 +2,6 @@ package recognize.word;
 
 import common.Constants;
 import common.util;
-import entity.DSAConnective;
 import entity.DSAWordDictItem;
 import entity.SenseRecord;
 import org.ansj.domain.Term;
@@ -19,17 +18,17 @@ import java.util.*;
  * Time: 2014-03-05 19:45
  * Email: jhji@ir.hit.edu.cn
  */
-public class MLRecognize
+public class connFeatureExtract
 {
-    private ArrayList<MLVectorItem> items;
-    private ArrayList<MLVectorItem> filterItems;
+    private ArrayList<ConnVectorItem> items;
+    private ArrayList<ConnVectorItem> filterItems;
 
     private int expInstances;
     private int impInstances;
 
     private ArrayList<ArrayList<String>> notLabeledWords = new ArrayList<ArrayList<String>>();
 
-    public MLRecognize() throws DocumentException, IOException
+    public connFeatureExtract() throws DocumentException, IOException
     {
         //加载资源
         Resource.LoadRawRecord();
@@ -45,8 +44,8 @@ public class MLRecognize
      */
     public void extractFeatures() throws IOException, DocumentException
     {
-        this.items = new ArrayList<MLVectorItem>();
-        this.filterItems = new ArrayList<MLVectorItem>();
+        this.items = new ArrayList<ConnVectorItem>();
+        this.filterItems = new ArrayList<ConnVectorItem>();
 
 
         String path = Constants.Libsvm_Origin_Data_Path;
@@ -73,7 +72,7 @@ public class MLRecognize
      * @throws DocumentException
      * @throws IOException
      */
-    public void getLabeledTrainDataWithAnsj(ArrayList<MLVectorItem> datas)
+    public void getLabeledTrainDataWithAnsj(ArrayList<ConnVectorItem> datas)
     {
         System.out.println("[--Info--]: Get Labeled Train Instances From Sense Record..." );
 
@@ -99,7 +98,7 @@ public class MLRecognize
             {
                 //1：针对每个词，进行判断和处理
                 String wContent   = wordItem.getName().trim();
-                MLVectorItem item = new MLVectorItem(wContent);
+                ConnVectorItem item = new ConnVectorItem(wContent);
 
                 //2: 过滤掉噪音词
                 if( !Resource.ExpConnWordDict.containsKey(wContent) ) continue;
@@ -165,7 +164,7 @@ public class MLRecognize
      * @throws DocumentException
      * @throws IOException
      */
-    public void getLabeledTrainData(ArrayList<MLVectorItem> datas) throws DocumentException, IOException
+    public void getLabeledTrainData(ArrayList<ConnVectorItem> datas) throws DocumentException, IOException
     {
         System.out.println("[--Info--]: Get Labeled Train Instances From Sense Record..." );
 
@@ -206,7 +205,7 @@ public class MLRecognize
 
                 int        beginIndex = 0;     //为了查找一个词在该句子中的位置，使用beginIndex来防止同名的词
                 String       prevPos  = "wp";
-                MLVectorItem prevItem = null; //用于设置上一个词条的nextPos。
+                ConnVectorItem prevItem = null; //用于设置上一个词条的nextPos。
 
                 for( Iterator ite = sentNode.elementIterator(); ite.hasNext(); )
                 {
@@ -220,7 +219,7 @@ public class MLRecognize
                         String wPosTag  = wordNode.attribute("pos").getText();
                         String wRelate  = wordNode.attribute("relate").getText();
 
-                        MLVectorItem item = new MLVectorItem(wContent);
+                        ConnVectorItem item = new ConnVectorItem(wContent);
 
                         //3：设置词性特征
                         item.setPos(wPosTag);
@@ -265,12 +264,12 @@ public class MLRecognize
         }
     }
 
-    public void filterItem(ArrayList<MLVectorItem> datas, ArrayList<MLVectorItem> results) throws IOException
+    public void filterItem(ArrayList<ConnVectorItem> datas, ArrayList<ConnVectorItem> results) throws IOException
     {
         HashMap<String, Integer> asConnWords    = new HashMap<String, Integer>();
         HashMap<String, Integer> notAsConnWords = new HashMap<String, Integer>();
 
-        for(MLVectorItem item : datas)
+        for(ConnVectorItem item : datas)
         {
             String wContent = item.getContent();
 
@@ -325,7 +324,7 @@ public class MLRecognize
      * @param fPath
      * @throws IOException
      */
-    public void convertToLibsvmData(String fPath, ArrayList<MLVectorItem> items) throws IOException
+    public void convertToLibsvmData(String fPath, ArrayList<ConnVectorItem> items) throws IOException
     {
         System.out.println("[--Info--]: Convert Data to Libsvm Format Data: " + fPath );
 
@@ -333,7 +332,7 @@ public class MLRecognize
 
         int expInstances = 0, impInstances = 0;
 
-        for(MLVectorItem item : items)
+        for(ConnVectorItem item : items)
         {
             //String line = item.toLineForLibSvm();
             String line = item.toLineForLibSvmWithAnsj();
@@ -391,7 +390,7 @@ public class MLRecognize
 
     public static void main(String[] args) throws IOException, DocumentException
     {
-        MLRecognize recognize = new MLRecognize();
+        connFeatureExtract recognize = new connFeatureExtract();
 
         //1: 抽取特征文件进行训练--->.\Data\libsvmTrainData.txt
         recognize.extractFeatures();

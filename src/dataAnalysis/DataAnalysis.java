@@ -10,6 +10,7 @@ import resource.Resource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -86,7 +87,7 @@ public class DataAnalysis
     }
 
     /***计算仅仅依靠显式连词能够达到的准确率,此次计算是在顶层relType上共四类基础上计算。**/
-    public void countRecognizeSenseBaseonExpWord() throws DocumentException
+    public void countRecognizeSenseBaseonExpWord() throws DocumentException, IOException
     {
         Resource.LoadRawRecord();
         Resource.LoadWordRelDict();
@@ -157,10 +158,140 @@ public class DataAnalysis
         }
     }
 
+
+    /***
+     * 判断在句间关系和句内关系中的连词使用情况。即：
+     * 在p2句间关系中，显示连词占据的比例以及在p3句内关系中显示连词占据的比例。
+     * 主要是为了识别一个连词是属于句内连词还是句间连词
+     */
+    public void countExpAndImpDistibutionInFile() throws IOException, DocumentException
+    {
+        Resource.LoadRawRecord();
+
+        int expInstanceP2 = 0, impInstanceP2 = 0;
+
+        for(SenseRecord record:Resource.Raw_Train_Annotation_p2)
+        {
+            String relType = record.getType();
+
+            if( relType.equalsIgnoreCase(Constants.EXPLICIT) )
+                expInstanceP2++;
+            else
+                impInstanceP2++;
+        }
+
+        int expInstanceP3 = 0, impInstanceP3 = 0;
+
+        for(SenseRecord record:Resource.Raw_Train_Annotation_p3)
+        {
+            String relType = record.getType();
+
+            if( relType.equalsIgnoreCase(Constants.EXPLICIT) )
+                expInstanceP3++;
+            else
+                impInstanceP3++;
+        }
+
+
+        System.out.println("P2 Cross Relation: Exp:" + expInstanceP2  + " Imp: " + impInstanceP2);
+        System.out.println("P3 Inter Relation: Exp:" + expInstanceP3  + " Imp: " + impInstanceP3);
+    }
+
+    /**计算每个连词在p2和p3中的分布，即：计算一个连词在句间关系和句内关系中分别出现的次数。**/
+    public void countConnectiveInP2AndP3() throws IOException, DocumentException
+    {
+        Resource.LoadRawRecord();
+        HashMap<String, Integer> expWordsInP3 = new HashMap<String, Integer>();
+        HashMap<String, Integer> expWordsInP2 = new HashMap<String, Integer>();
+
+        for(SenseRecord record:Resource.Raw_Train_Annotation_p3)
+        {
+            if(record.getType().equalsIgnoreCase(Constants.EXPLICIT))
+            {
+                int num = 0;
+                String conn = record.getConnective();
+
+                if(expWordsInP3.containsKey(conn)) num = expWordsInP3.get(conn);
+
+                expWordsInP3.put(conn, num+1);
+            }
+        }
+
+        for(SenseRecord record:Resource.Raw_Train_Annotation_p2)
+        {
+            if(record.getType().equalsIgnoreCase(Constants.EXPLICIT))
+            {
+                int num = 0;
+                String conn = record.getConnective();
+
+                if(expWordsInP2.containsKey(conn)) num = expWordsInP2.get(conn);
+
+                expWordsInP2.put(conn, num+1);
+            }
+        }
+
+        //将两个数据合并到一个数据中:第一列表示在p2中出现的次数，第二列表示在p3中出现的次数
+        HashMap<String,Integer[]> finalResult = new HashMap<String,Integer[]>();
+
+        for(Map.Entry<String,Integer> entry:expWordsInP2.entrySet())
+        {
+            String  conn    = entry.getKey();
+            Integer numInP2 = entry.getValue();
+            Integer numInP3 = expWordsInP3.get(conn);
+
+            if( numInP3 == null ) numInP3 = 0;
+
+            finalResult.put( conn,new Integer[]{numInP2,numInP3} );
+        }
+        //查找剩余的单独连词
+        for(Map.Entry<String, Integer> entry:expWordsInP3.entrySet())
+        {
+            String conn = entry.getKey();
+
+            if( finalResult.containsKey(conn) ) continue;
+
+            finalResult.put( conn, new Integer[]{0, expWordsInP3.get(conn)} );
+        }
+
+        ArrayList<String> lines = new ArrayList<String>();
+
+        for(Map.Entry<String, Integer[]> entry:finalResult.entrySet())
+        {
+            String line = entry.getKey() + "\t" + entry.getValue()[0] + "\t" + entry.getValue()[1];
+            lines.add(line);
+        }
+
+        String fPath = "resource/connDistributionInP2P3.txt";
+
+        util.writeLinesToFile(fPath, lines);
+
+    }
+
+    /**判断是否有连词漏掉了，因为连词词表是过滤过的。**/
+    public void checkData() throws IOException, DocumentException
+    {
+        Resource.LoadExpConnectivesDict();
+        Resource.LoadConnInP2AndP3();
+
+        for( Map.Entry<String, Integer> entry:Resource.ExpConnWordDict.entrySet() )
+        {
+            String wContent = entry.getKey();
+
+            if( !Resource.ConnInP2AndP3.containsKey(wContent) )
+            {
+                System.out.println("Error: " + wContent + " not appeared.");
+            }
+        }
+
+    }
+
     public static void main(String[] args) throws IOException, DocumentException
     {
         DataAnalysis analysis = new DataAnalysis();
         //analysis.countConnArgType();
-        analysis.countRecognizeSenseBaseonExpWord();
+        //analysis.countRecognizeSenseBaseonExpWord();
+        //analysis.countConnectiveInP2AndP3();
+        //analysis.countExpAndImpDistibutionInFile();
+        analysis.checkData();
     }
 }

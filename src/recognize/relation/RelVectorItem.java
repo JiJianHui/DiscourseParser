@@ -1,5 +1,6 @@
 package recognize.relation;
 
+import common.Constants;
 import common.util;
 import resource.Resource;
 
@@ -67,6 +68,8 @@ public class RelVectorItem
 
 
         String line = String.valueOf( relNO.charAt(0) );
+
+        if( relNO.equalsIgnoreCase(Constants.DefaultRelNO) ) line = "0";
 
         line += " 1:" + arg1Content.length();
         line += " 2:" + arg2Content.length();

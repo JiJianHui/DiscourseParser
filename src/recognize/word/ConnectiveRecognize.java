@@ -171,7 +171,7 @@ public class ConnectiveRecognize
                     //使用规则方法进行判断是否是连词
                     if( isConnectiveWithRule(wContent, wPosTag, wRelate, senseContent) )
                     {
-                        DSAConnective dsaConnective = new DSAConnective(wContent);
+                        DSAConnective dsaConnective = new DSAConnective(wContent,dsaSentence.getId());
                         dsaConnective.setPosTag(wPosTag);
                         dsaConnective.setDepencyTag(wRelate);
 

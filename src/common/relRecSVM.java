@@ -40,7 +40,9 @@ public class relRecSVM
 
     public relRecSVM() throws IOException
     {
-
+        this.scaleRulePath = "data/relation/impRelTrainData._scaleRule.txt";
+        this.scaleTrainDataPath = "data/relation/impRelTrainData._scale.txt";
+        this.scaleTrainDataPath = "data/relation/impRelTestData._scale.txt";
     }
 
     /*** 缩放训练数据和测试数据，主要需要设置console的输出重定向，输出到文件中*/
@@ -92,12 +94,13 @@ public class relRecSVM
         this.trainDataPath = trainDataPath;
         this.testDataPath  = testDataPath;
 
-        this.scaleRulePath = trainDataPath.substring(0, trainDataPath.length()-3) + "_ScaleRule.txt";
+        this.scaleRulePath = trainDataPath.substring(0, trainDataPath.length()-3) + "_scaleRule.txt";
 
         this.scaleTrainData();
         this.scaleTestData();
 
-        String[] trainArgs = {"-c", "2048", "-g", "0.0078125","-w1","6","-w0","1", "-v", "10", scaleTrainDataPath};
+        //String[] trainArgs = {"-c", "2048", "-g", "0.0078125","-w1","6","-w0","1", scaleTrainDataPath};
+        String[] trainArgs = {"-c", "2.0", "-g", "0.125","-w1","15","-w2","4","-w3","10","-w4","1", scaleTrainDataPath};
 
         this.modelFilePath = svm_train.main(trainArgs);
 
@@ -122,6 +125,15 @@ public class relRecSVM
         System.out.println("[--Info--] Loading SVM Model From " + fPath );
         this.svmModel = svm.svm_load_model(fPath);
     }
+    public void loadModel() throws IOException
+    {
+        if( this.svmModel != null ) return;
+
+        String fPath = "./impRelTrainData._scale.txt.model";
+        System.out.println("[--Info--] Loading SVM Model From " + fPath );
+        this.svmModel = svm.svm_load_model(fPath);
+    }
+
 
     private void loadScaleRule() throws IOException
     {
@@ -170,6 +182,42 @@ public class relRecSVM
         return label.intValue();
     }
 
+    public void countPRF() throws IOException
+    {
+        String testFile = this.scaleTestDataPath;
+        String result   = this.resultPath;
+        //String testFile = "data/relation/impRelTestData._scale.txt";
+        //String result   = "data/relation/impRelTrainData._result.txt";
+
+        ArrayList<String> testLines   = new ArrayList<String>();
+        ArrayList<String> resultLines = new ArrayList<String>();
+
+        util.readFileToLines(testFile, testLines);
+        util.readFileToLines(result, resultLines);
+
+        double allNum = 0, recNum = 0, recCorrect = 0;
+
+        for(int index = 0; index < testLines.size(); index++)
+        {
+            String testLine = testLines.get(index);
+            String[] lists  = testLine.split(" ");
+
+            int testLabel   = Double.valueOf(lists[0]).intValue();
+            int resultLabel = Double.valueOf(resultLines.get(index).trim()).intValue();
+
+            allNum++;
+            if( testLabel != 0 ) recNum++;
+            if( testLabel != 0 && testLabel == resultLabel) recCorrect++;
+
+        }
+
+        double p = recCorrect / recNum;
+        double r = recNum / allNum ;
+        double f = 2 * p * r / (p + r);
+
+        System.out.println("P: " + p + "\t R: " + r + "\t F: " + f);
+    }
+
     private static int atoi(String s){ return Integer.parseInt(s); }
     private static double atof(String s) { return Double.valueOf(s).doubleValue(); }
 
@@ -183,5 +231,9 @@ public class relRecSVM
         String modelPath     = test.trainModel(trainDataPath, testDataPath);
 
         test.loadModel(modelPath);
+        test.testModel(modelPath);
+
+        test.countPRF();
+
     }
 }

@@ -1,7 +1,6 @@
 package entity;
 
 import common.Constants;
-import common.util;
 import org.ansj.domain.Term;
 
 import java.util.ArrayList;
@@ -20,10 +19,13 @@ public class DSASentence
     private String content;
     private String segContent;
 
-    private ArrayList<DSARelation> relations;
-    private ArrayList<DSAConnective> conWords;
+    private boolean isCorrect;      //是否为语法结构完整的句子
 
-    private ArrayList<ParallelConnective> parallelConnectives;
+    private ArrayList<DSAInterRelation> relations;
+    private ArrayList<DSAInterRelation> impRelations;
+
+    private ArrayList<DSAConnective> conWords;
+    private ArrayList<DSAConnective> parallelConnectives;
 
     /**保存了分词信息**/
     private List<Term> ansjWordTerms;
@@ -35,12 +37,16 @@ public class DSASentence
     {
         this.content  = content;
 
-        this.relations = new ArrayList<DSARelation>();
+        this.relations = new ArrayList<DSAInterRelation>();
+        this.impRelations = new ArrayList<DSAInterRelation>();
+
         this.conWords = new ArrayList<DSAConnective>();
-        this.parallelConnectives = new ArrayList<ParallelConnective>();
+        this.parallelConnectives = new ArrayList<DSAConnective>();
 
         this.edus = new ArrayList<DSAEDU>();
         this.rootEDU = null;
+
+        this.isCorrect = true;
     }
 
     public String getConnWordContent()
@@ -124,7 +130,6 @@ public class DSASentence
         return EDUs;
     }
 
-
     /**
      * 将一个句子转换为XML形式的结果，用于客户端的分析。
      * @return
@@ -152,11 +157,11 @@ public class DSASentence
         this.conWords = conWords;
     }
 
-    public ArrayList<DSARelation> getRelations() {
+    public ArrayList<DSAInterRelation> getRelations() {
         return relations;
     }
 
-    public void setRelations(ArrayList<DSARelation> relations) {
+    public void setRelations(ArrayList<DSAInterRelation> relations) {
         this.relations = relations;
     }
 
@@ -168,11 +173,11 @@ public class DSASentence
         this.ansjWordTerms = ansjWordTerms;
     }
 
-    public ArrayList<ParallelConnective> getParallelConnectives() {
+    public ArrayList<DSAConnective> getParallelConnectives() {
         return parallelConnectives;
     }
 
-    public void setParallelConnectives(ArrayList<ParallelConnective> parallelConnectives) {
+    public void setParallelConnectives(ArrayList<DSAConnective> parallelConnectives) {
         this.parallelConnectives = parallelConnectives;
     }
 
@@ -206,5 +211,21 @@ public class DSASentence
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public boolean isCorrect() {
+        return isCorrect;
+    }
+
+    public void setIsCorrect(boolean correctSentence) {
+        isCorrect = correctSentence;
+    }
+
+    public ArrayList<DSAInterRelation> getImpRelations() {
+        return impRelations;
+    }
+
+    public void setImpRelations(ArrayList<DSAInterRelation> impRelations) {
+        this.impRelations = impRelations;
     }
 }

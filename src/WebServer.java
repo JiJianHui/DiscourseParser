@@ -1,6 +1,8 @@
+import common.Cache;
 import common.Constants;
 import common.util;
 import entity.DSAConnective;
+import entity.DSAParagraph;
 import entity.DSASentence;
 
 import java.io.BufferedReader;
@@ -21,9 +23,8 @@ public class WebServer
 {
 
     //private static Tms tms = null;
-    private static DiscourseParser dsaParser = null;
-
-
+    private  DiscourseParser dsaParser;
+    private  Cache cache;
 
     public void run() throws Exception
     {
@@ -31,6 +32,7 @@ public class WebServer
 
         //tms = new Tms();
         dsaParser = new DiscourseParser();	//后台处理程序
+        cache     = new Cache();
 
         ServerSocket serverSocket = new ServerSocket(8090);
         System.out.println("Server is listening to 8090 port:");
@@ -39,47 +41,44 @@ public class WebServer
         {
             try
             {
-            //监听客户端的请求
-            Socket client = serverSocket.accept();
+                //监听客户端的请求
+                Socket client = serverSocket.accept();
+                InputStreamReader cIn = new InputStreamReader(client.getInputStream());
+                BufferedReader reader = new BufferedReader(cIn);
 
-            InputStreamReader cIn = new InputStreamReader(client.getInputStream());
-            BufferedReader reader = new BufferedReader(cIn);
+                String line = reader.readLine();
+                System.out.println("get a query:" + line);
 
-            String line   = reader.readLine();
+                String response;
+                boolean needSegment;
 
-            System.out.println("get a query:" + line);
+                if( line.startsWith("0") ) needSegment = false;
+                else needSegment = true;
 
-            DSASentence sentence = dsaParser.run(line, false);
+                line = line.substring(1);
 
-            String response = "";
-
-            if( sentence.getConWords().size() > 0 )
-            {
-                DSAConnective curWord = sentence.getConWords().get(0);
-                String relType = curWord.getExpRelType();
-                relType = relType + Constants.relName[util.getRelIDIndex(relType)];
-
-                response = curWord.getContent() + "#";
-                if( curWord.getArg1EDU()!= null && curWord.getArg2EDU() != null )
-                {
-                    response += curWord.getArg1EDU().getContent() + "#";
-                    response += curWord.getArg2EDU().getContent() + "#";
-                    response += relType + "#";
-                    response += curWord.getExpRelProbality();
+                //处理分析客户端的请求
+                if( cache.get(line) != null ) {
+                    response = cache.get(line);
                 }
-            }
+                else{
 
-            PrintStream print = new PrintStream(client.getOutputStream());
+                    DSAParagraph paragraph = dsaParser.parseRawFile(line, needSegment);
+                    response = paragraph.toXML();
+                    cache.put(line, response);
+                }
 
-            print.println(response);
-            print.close();
+                //返回XML结果
+                PrintStream print = new PrintStream(client.getOutputStream());
 
-            System.out.println(response);
+                print.println(response);
+                print.close();
 
-            client.close();
-            }
-            catch (Exception e)
-            {
+                System.out.println(response);
+
+                client.close();
+
+            }catch (Exception e){
                 e.printStackTrace();
             }
         }

@@ -13,26 +13,21 @@ import java.util.ArrayList;
  */
 public class DSAConnective
 {
+    private int sentID;//属于的句子
     private String content;     //连词的实际内容
 
+    //连词识别相关特征
     private String posTag;
     private String prevPosTag;
     private String nextPosTag;
-
     private double positionInLine;  //在实际的没有分词的内容下的位置
-
     private String depencyTag;  //依存分析的标签
 
+    private Boolean isConnective;   //是否是连词，因为在判断的过程中会不断的清除
+    private Boolean isInterConnective; //是否是句内连词,默认是true
     private Boolean isParallelWord; //是否是并列关联词：虽然...但是
 
-    private String upWord;          //上位词
-    private String sameWord;        //同义词
-
-    private String parserTag;        //短语结构分析标签
-    private String prevParserTag;
-    private String nextParserTag;
-
-
+    //确定连词链接的两个EDU相关的变量
     private DSAArgument arg1;
     private DSAArgument arg2;
 
@@ -48,9 +43,14 @@ public class DSAConnective
     private String expRelType;
     private double expRelProbality;
 
-    public DSAConnective(String content)
+    private int beginIndex1;    //针对并列连词使用的两个值
+    private int beginIndex2;
+
+    public DSAConnective(String content, int sentID)
     {
         this.content    = content;
+        this.sentID     = sentID;
+
         this.posTag     = null;
 
         this.depencyTag = null;
@@ -60,6 +60,9 @@ public class DSAConnective
             this.isParallelWord = true;
         }
         else this.isParallelWord = false;
+
+        this.isConnective = true;
+        this.isInterConnective = true;
 
         this.connNode  = null;
         this.arg1Nodes = new ArrayList<Tree>();
@@ -214,5 +217,46 @@ public class DSAConnective
 
     public void setExpRelProbality(double expRelProbality) {
         this.expRelProbality = expRelProbality;
+    }
+
+    public Boolean getInterConnective() {
+        return isInterConnective;
+    }
+
+    public void setInterConnective(Boolean interConnective) {
+        isInterConnective = interConnective;
+    }
+
+    public Boolean getIsConnective() {
+        return isConnective;
+    }
+
+    public void setIsConnective(Boolean connective) {
+        isConnective = connective;
+    }
+
+
+    public int getBeginIndex1() {
+        return beginIndex1;
+    }
+
+    public void setBeginIndex1(int beginIndex1) {
+        this.beginIndex1 = beginIndex1;
+    }
+
+    public int getBeginIndex2() {
+        return beginIndex2;
+    }
+
+    public void setBeginIndex2(int beginIndex2) {
+        this.beginIndex2 = beginIndex2;
+    }
+
+    public int getSentID() {
+        return sentID;
+    }
+
+    public void setSentID(int sentID) {
+        this.sentID = sentID;
     }
 }
