@@ -1,7 +1,6 @@
 package entity.recognize;
 
 import common.Constants;
-import entity.DSAConnective;
 
 import java.util.ArrayList;
 

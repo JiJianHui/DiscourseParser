@@ -1,5 +1,8 @@
 entity包：
 
+train包：主要是在训练模型的时候使用到的实体。
+recognize:主要是在分析文章的时候使用到的实体。
+
 主要用来在Discourse Parser的过程中，封装数据使用。
 
 SenseRecord：原始标注语料的封装，每个标注行都会被封装为一个senseRcord

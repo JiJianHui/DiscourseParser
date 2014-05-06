@@ -2,8 +2,8 @@ package resource;
 
 import common.Constants;
 import common.util;
-import entity.DSAWordDictItem;
-import entity.SenseRecord;
+import entity.train.DSAWordDictItem;
+import entity.train.SenseRecord;
 import org.dom4j.DocumentException;
 
 import java.io.IOException;

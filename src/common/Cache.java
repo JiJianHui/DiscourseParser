@@ -22,4 +22,8 @@ public class Cache
     public String get(String key){
         return this.memory.get(key);
     }
+
+    public void clear(){
+        this.memory.clear();
+    }
 }

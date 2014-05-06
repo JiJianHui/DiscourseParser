@@ -2,15 +2,14 @@ package dataAnalysis;
 
 import common.Constants;
 import common.util;
-import entity.DSAWordDictItem;
-import entity.SenseRecord;
+import entity.train.DSAWordDictItem;
+import entity.train.SenseRecord;
 import org.dom4j.DocumentException;
 import resource.Resource;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 /**

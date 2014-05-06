@@ -1,7 +1,6 @@
 package entity.recognize;
 
 import common.Constants;
-import entity.DSAConnective;
 import org.ansj.domain.Term;
 
 import java.util.ArrayList;

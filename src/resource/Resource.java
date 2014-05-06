@@ -8,8 +8,8 @@ import java.util.*;
 
 import common.Constants;
 import common.util;
-import entity.DSAWordDictItem;
-import entity.SenseRecord;
+import entity.train.DSAWordDictItem;
+import entity.train.SenseRecord;
 import org.dom4j.*;
 
 /**
@@ -473,6 +473,7 @@ public class Resource
     /**
      * 加载常见连词在同义词词林中的标签组合
      */
+    /**
     public static void LoadConnCatgInSymCiLin() throws IOException
     {
         if( ConnTagInSymCiLin.size() > 10 ) return;
@@ -489,7 +490,7 @@ public class Resource
             ConnTagInSymCiLin.put( lists[0], Integer.valueOf(lists[1].trim()) );
         }
     }
-
+    **/
 
     /**
      * 加载在同义词词林中出现的所有标签，这样就可以为每个词找到一个标签。主要是为了减少数据稀疏性。

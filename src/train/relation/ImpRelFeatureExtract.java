@@ -4,8 +4,8 @@ import common.Constants;
 import common.util;
 import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.trees.TypedDependency;
-import entity.SenseRecord;
-import ltp.PhraseParser;
+import entity.train.SenseRecord;
+import syntax.PhraseParser;
 import org.dom4j.DocumentException;
 import resource.Resource;
 
@@ -248,7 +248,7 @@ public class ImpRelFeatureExtract
         }
     }
 
-    /**从两个文本段中提取出隐式关系识别需要的特征。**/
+    /**从两个文本段中提取出隐式关系识别需要的特征。主要是用于预测的时候**/
     public RelVectorItem getFeatureLine(String arg1Content, String arg2Content) throws IOException
     {
         RelVectorItem item   = new RelVectorItem();

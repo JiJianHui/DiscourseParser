@@ -1,14 +1,9 @@
 package entity;
 
-import common.Constants;
-import common.util;
-import entity.SenseRecord;
+import entity.train.SenseRecord;
 import org.dom4j.*;
-import resource.Resource;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 
 /**
  * 主要的任务是：

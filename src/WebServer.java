@@ -1,18 +1,11 @@
 import common.Cache;
-import common.Constants;
-import common.util;
-import entity.DSAConnective;
-import entity.DSAParagraph;
-import entity.DSASentence;
+import entity.recognize.DSAParagraph;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
 
 /**
  * Flex前端处理的后台程序，用于接收Flex前端java远程对象的请求。

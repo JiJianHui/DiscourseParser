@@ -1,18 +1,19 @@
 import common.Constants;
-import common.LibSVMTest;
-import common.relRecSVM;
+import entity.recognize.*;
+import entity.train.DSAWordDictItem;
+import train.svm.LibSVMTest;
+import train.svm.relRecSVM;
 import common.util;
 import edu.stanford.nlp.ling.Label;
 import edu.stanford.nlp.trees.Tree;
-import entity.*;
-import ltp.PhraseParser;
+import syntax.PhraseParser;
 import org.ansj.domain.Term;
 import org.ansj.recognition.NatureRecognition;
 import org.ansj.splitWord.analysis.NlpAnalysis;
 import org.dom4j.DocumentException;
-import recognize.relation.ImpRelFeatureExtract;
-import recognize.relation.RelVectorItem;
-import recognize.word.ConnVectorItem;
+import train.relation.ImpRelFeatureExtract;
+import train.relation.RelVectorItem;
+import train.word.ConnVectorItem;
 import resource.Resource;
 
 import java.io.IOException;
@@ -27,23 +28,14 @@ import java.util.*;
  */
 public class DiscourseParser
 {
-    private String text;    //待分析文章
-    private boolean needSegment; //是否需要分词
-
-    private ArrayList<DSASentence> sentences;   //句子集合
-
-    private LibSVMTest libsvmMode     = null;   //连词识别模型
-
-    private relRecSVM relationSVMMode = null;   //隐式关系识别模型
-    private ImpRelFeatureExtract impRelFeatureExtract = null;
+    private LibSVMTest connSvmMode;      //连词识别模型
+    private relRecSVM relationSVMMode;   //隐式关系识别模型
 
     private PhraseParser phraseParser;  //短语结构分析
+    private ImpRelFeatureExtract impRelFeatureExtract;
 
     public DiscourseParser() throws DocumentException, IOException
     {
-        needSegment = true;
-        sentences   = new ArrayList<DSASentence>();
-
         //1: 加载词典信息
         Resource.LoadExpConnectivesDict();
 
@@ -51,7 +43,7 @@ public class DiscourseParser
         Resource.LoadWordRelDict();
 
         //3: 加载标注好的训练数据
-        Resource.LoadRawRecord();
+        //Resource.LoadRawRecord();
 
         //4: 加载并列连词词典
         Resource.LoadParallelWordDict();
@@ -61,14 +53,16 @@ public class DiscourseParser
         Resource.LoadConnInP2AndP3();
 
         //6: 加载连词识别svm模型
-        libsvmMode = new LibSVMTest();
-        libsvmMode.loadModel();
+        connSvmMode = new LibSVMTest();
+        connSvmMode.loadModel();
 
         //7: 加载短语结构分析
         this.phraseParser = new PhraseParser();
 
+        //8: 加载隐式关系识别模型
         relationSVMMode = new relRecSVM();
         relationSVMMode.loadModel();
+
         impRelFeatureExtract = new ImpRelFeatureExtract();
     }
 
@@ -76,33 +70,29 @@ public class DiscourseParser
     /**
      * 针对一篇文章进行分析。首先需要将一篇文章进行分句，然后对每个句子进行处理。
      * 输入的是一篇文章的内容，返回的是封装好的DSA对象。
+     * fileContent: 输入的文章，可以是一个句子或者是多个句子。
+     * needSegment：是否进行分词的标志
      */
     public DSAParagraph parseRawFile(String fileContent, boolean needSegment) throws Exception
     {
-        DSAParagraph paragraph = new DSAParagraph(fileContent);
-
-        //0: 将文章读取并得到文章中的句子集合
+        //0: 将文章读取并进行分割得到文章中的句子集合
+        DSAParagraph      paragraph = new DSAParagraph(fileContent);
         ArrayList<String> sentences = util.filtStringToSentence(fileContent);
 
-
-        //1：句内关系的判断:包括了显式和隐式关系的过程
+        //1：句内关系的判断:包括了一个句子内部的显式和隐式关系的过程
         for( int index = 0; index < sentences.size(); index++ )
         {
-            String line = sentences.get(index);
-
-            DSASentence dsaSentence = new DSASentence(line);
+            DSASentence dsaSentence = new DSASentence( sentences.get(index) );
             dsaSentence.setId(index);
 
             this.processSentence(dsaSentence, needSegment);
-
             paragraph.sentences.add(dsaSentence);
         }
-
 
         //2：句间关系的识别:跨句显式关系识别,相邻的两句是一个候选
         for(int index = 0; index < paragraph.sentences.size() - 1; index++)
         {
-            DSASentence curSentence = paragraph.sentences.get(index);
+            DSASentence curSentence  = paragraph.sentences.get(index);
             DSASentence nextSentence = paragraph.sentences.get(index + 1);
 
             //a: 判断是否是句间关系中的显式关系
@@ -110,8 +100,8 @@ public class DiscourseParser
 
             if( hasExpRel ) continue;
 
-            //b: 判断是否是隐式关系
-            int senseType = getCrossImpInPara(paragraph, curSentence, nextSentence);
+            //b: 获取两个句子之间可能存在的隐式关系
+            int  senseType   = getCrossImpInPara(paragraph, curSentence, nextSentence);
         }
 
         return paragraph;
@@ -125,11 +115,9 @@ public class DiscourseParser
         //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
         this.preProcess(sentence, needSegment);
 
-        //2: 识别单个连词
+        //2: 识别单个连词和识别并列连词：不仅...而且
         this.findConnWordWithML(sentence);
         this.markConnAsInterOrCross(sentence);
-
-        //3: 识别并列连词：不仅...而且
         this.findParallelWord(sentence);
 
         //4: 将句子按照短语结构拆分成基本EDU
@@ -191,145 +179,39 @@ public class DiscourseParser
     }
 
 
-    /**判断一个段落中的两个句子是否存在显式的句间关系。**/
-    public boolean getCrossExpRelInPara(DSAParagraph para, DSASentence curSentence, DSASentence nextSentence)
-    {
-        boolean hasExpRel = false;
-
-        //1: 首先判断是否存在connArgArg类型的关系
-        for(DSAConnective conn:curSentence.getConWords())
-        {
-            if( !conn.getInterConnective() && conn.getIsConnective() )
-            {
-                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
-                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
-
-                if( connArgArg > argConnArg )
-                {
-                    DSACrossRelation crossRelation = new DSACrossRelation();
-
-                    crossRelation.arg1SentID  = curSentence.getId();
-                    crossRelation.arg2SentID  = nextSentence.getId();
-                    crossRelation.arg1Content = curSentence.getContent();
-                    crossRelation.arg2Content = nextSentence.getContent();
-
-                    crossRelation.conn        = conn;
-                    crossRelation.relType     = Constants.EXPLICIT;
-
-                    DSAWordDictItem item = Resource.allWordsDict.get( conn.getContent() );
-                    double probality     = item.getMostExpProbality();
-                    String senseNO       = item.getMostExpProbalityRelNO();
-
-                    crossRelation.relNO     = util.convertOldRelIDToNew(senseNO);
-                    crossRelation.probality = probality;
-
-                    para.crossRelations.add(crossRelation);
-
-                    hasExpRel = true;
-                }
-            }
-        }
-
-        //2: 判断是否存在conn-Arg-Arg类型的关系
-        for( DSAConnective conn:nextSentence.getConWords() )
-        {
-            if( !conn.getInterConnective() && conn.getIsConnective() )
-            {
-                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
-                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
-
-                if( connArgArg <= argConnArg )
-                {
-                    DSACrossRelation crossRelation = new DSACrossRelation();
-
-                    crossRelation.arg1SentID  = curSentence.getId();
-                    crossRelation.arg2SentID  = nextSentence.getId();
-                    crossRelation.arg1Content = curSentence.getContent();
-                    crossRelation.arg2Content = nextSentence.getContent();
-
-                    crossRelation.conn        = conn;
-                    crossRelation.relType     = Constants.EXPLICIT;
-
-                    DSAWordDictItem item = Resource.allWordsDict.get( conn.getContent() );
-                    double probality     = item.getMostExpProbality();
-                    String senseNO       = item.getMostExpProbalityRelNO();
-
-                    crossRelation.relNO     = util.convertOldRelIDToNew(senseNO);
-                    crossRelation.probality = probality;
-
-                    para.crossRelations.add(crossRelation);
-
-                    hasExpRel = true;
-                }
-            }
-        }
-
-        return hasExpRel;
-    }
-
-
-    /**判断一个段落中的两个句子是否存在隐式关系**/
-    private int getCrossImpInPara(DSAParagraph para, DSASentence curSentence,
-                                  DSASentence nextSentence) throws IOException
-    {
-        String cur  = curSentence.getSegContent();
-        String nex = nextSentence.getSegContent();
-
-        RelVectorItem item = impRelFeatureExtract.getFeatureLine(cur, nex);
-        item.relNO         = Constants.DefaultRelNO;
-
-        int senseType = this.relationSVMMode.predict( item.toLineForLibsvm() );
-
-        //如果存在非0隐式关系
-        if( senseType != 0 )
-        {
-            DSACrossRelation crossRelation = new DSACrossRelation();
-
-            crossRelation.arg1SentID  = curSentence.getId();
-            crossRelation.arg2SentID  = nextSentence.getId();
-            crossRelation.arg1Content = curSentence.getContent();
-            crossRelation.arg2Content = nextSentence.getContent();
-
-            crossRelation.relType     = Constants.IMPLICIT;
-            crossRelation.relNO       = String.valueOf(senseType);
-            crossRelation.probality   = 1.0;
-            crossRelation.conn        = null;
-
-            //TO-DO: 后续可以添加上候选连词，比如哪个连词可以插入
-            para.crossRelations.add(crossRelation);
-        }
-
-        return senseType;
-    }
 
     //-------------------------------0: 对句子进行底层处理--------------------------
 
     /**对输入的句子进行底层的NLP处理，主要是包括了分词、词性标注等。**/
     private void preProcess(DSASentence sentence, boolean needSegment)
     {
-        List<Term> words = null;
+        List<Term> words;
 
         if( !needSegment )
         {
             //不需要分词, 已经分好词的结果，那么我们需要词性标注的结果
-            List<String> lists = Arrays.asList(sentence.getContent().split(" "));
+            List<String> lists = Arrays.asList( sentence.getContent().split(" ") );
+
             words = NatureRecognition.recognition(lists, 0) ;
 
-            for(int index = 0; index < words.size(); index++)
+            for( int index = 0; index < words.size(); index++ )
             {
                 Term curTerm = words.get(index);
-                if(index > 0) curTerm.setFrom( words.get(index - 1) );
-                if(index < words.size() - 1) curTerm.setTo( words.get(index+1) );
+
+                if(index > 0) {
+                    curTerm.setFrom( words.get(index - 1) );
+                }
+                if(index < words.size() - 1){
+                    curTerm.setTo( words.get(index+1) );
+                }
             }
         }
-        else
-        {
-            //1：进行分词
+        else{
             words = NlpAnalysis.parse( util.removeAllBlank(sentence.getContent()) );
         }
 
-        sentence.setContent( util.removeAllBlank(sentence.getContent()) );
         sentence.setAnsjWordTerms(words);
+        sentence.setContent( util.removeAllBlank(sentence.getContent()) );
     }
 
     //-------------------------------1: Connective Recognize----------------------
@@ -395,7 +277,7 @@ public class DiscourseParser
         //b: 使用SVM模型判断每个候选的词是否是连词
         for( ConnVectorItem item : candidateTerms )
         {
-            int label = libsvmMode.predict(item);
+            int label = connSvmMode.predict(item);
 
             if( label > 0 || item.getOccurInDict() > 100 )
             {
@@ -520,7 +402,8 @@ public class DiscourseParser
             sentence.getParallelConnectives().add(parallelConnective);
     }
 
-    //-------------------------------2: EDU Recognize-----------------------------
+    //-------------------------------2: EDU segment-----------------------------
+    //Segment a sentence into basic edus
 
     /**
      * 识别一个关系涉及到的Argument，可以考虑的是使用argument的标注信息来进行训练，
@@ -740,6 +623,7 @@ public class DiscourseParser
         return content;
     }
 
+    //-------------------------------2.1: Matchd Edu and connective--------------------
 
     /***
      * 寻找显式连词所关联的两个EDU
@@ -1274,6 +1158,119 @@ public class DiscourseParser
         ArrayList<DSAConnective> conWords = dsaSentence.getConWords();
 
         return conWords;
+    }
+
+    //-----------------------3.1: Cross Sentence Sense Recognize-----------------
+
+    /**判断一个段落中的两个句子是否存在显式的句间关系。**/
+    public boolean getCrossExpRelInPara(DSAParagraph para, DSASentence curSentence, DSASentence nextSentence)
+    {
+        boolean hasExpRel = false;
+
+        //1: 首先判断是否存在connArgArg类型的关系
+        for(DSAConnective conn:curSentence.getConWords())
+        {
+            if( !conn.getInterConnective() && conn.getIsConnective() )
+            {
+                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
+                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
+
+                if( connArgArg > argConnArg )
+                {
+                    DSACrossRelation crossRelation = new DSACrossRelation();
+
+                    crossRelation.arg1SentID  = curSentence.getId();
+                    crossRelation.arg2SentID  = nextSentence.getId();
+                    crossRelation.arg1Content = curSentence.getContent();
+                    crossRelation.arg2Content = nextSentence.getContent();
+
+                    crossRelation.conn        = conn;
+                    crossRelation.relType     = Constants.EXPLICIT;
+
+                    DSAWordDictItem item      = Resource.allWordsDict.get( conn.getContent() );
+                    double     probality      = item.getMostExpProbality();
+                    String       senseNO      = item.getMostExpProbalityRelNO();
+
+                    crossRelation.relNO       = util.convertOldRelIDToNew(senseNO);
+                    crossRelation.probality   = probality;
+
+                    para.crossRelations.add(crossRelation);
+
+                    hasExpRel = true;
+                }
+            }
+        }
+
+        //2: 判断是否存在conn-Arg-Arg类型的关系
+        for( DSAConnective conn:nextSentence.getConWords() )
+        {
+            if( !conn.getInterConnective() && conn.getIsConnective() )
+            {
+                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
+                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
+
+                if( connArgArg <= argConnArg )
+                {
+                    DSACrossRelation crossRelation = new DSACrossRelation();
+
+                    crossRelation.arg1SentID  = curSentence.getId();
+                    crossRelation.arg2SentID  = nextSentence.getId();
+                    crossRelation.arg1Content = curSentence.getContent();
+                    crossRelation.arg2Content = nextSentence.getContent();
+
+                    crossRelation.conn        = conn;
+                    crossRelation.relType     = Constants.EXPLICIT;
+
+                    DSAWordDictItem item      = Resource.allWordsDict.get( conn.getContent() );
+                    double     probality      = item.getMostExpProbality();
+                    String       senseNO      = item.getMostExpProbalityRelNO();
+
+                    crossRelation.relNO       = util.convertOldRelIDToNew(senseNO);
+                    crossRelation.probality   = probality;
+
+                    para.crossRelations.add(crossRelation);
+
+                    hasExpRel = true;
+                }
+            }
+        }
+
+        return hasExpRel;
+    }
+
+
+    /**判断一个段落中的两个句子是否存在隐式关系**/
+    private int getCrossImpInPara(DSAParagraph para, DSASentence curSentence,
+                                  DSASentence nextSentence) throws IOException
+    {
+        String cur  = curSentence.getSegContent();
+        String nex = nextSentence.getSegContent();
+
+        RelVectorItem item = impRelFeatureExtract.getFeatureLine(cur, nex);
+        item.relNO         = Constants.DefaultRelNO;
+
+        int senseType = this.relationSVMMode.predict( item.toLineForLibsvm() );
+
+        //如果存在非0隐式关系
+        if( senseType != 0 )
+        {
+            DSACrossRelation crossRelation = new DSACrossRelation();
+
+            crossRelation.arg1SentID  = curSentence.getId();
+            crossRelation.arg2SentID  = nextSentence.getId();
+            crossRelation.arg1Content = curSentence.getContent();
+            crossRelation.arg2Content = nextSentence.getContent();
+
+            crossRelation.relType     = Constants.IMPLICIT;
+            crossRelation.relNO       = String.valueOf(senseType);
+            crossRelation.probality   = 1.0;
+            crossRelation.conn        = null;
+
+            //TO-DO: 后续可以添加上候选连词，比如哪个连词可以插入
+            para.crossRelations.add(crossRelation);
+        }
+
+        return senseType;
     }
 
 

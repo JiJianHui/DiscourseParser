@@ -2,8 +2,6 @@ package entity.recognize;
 
 import common.Constants;
 import edu.stanford.nlp.trees.Tree;
-import entity.DSAArgument;
-import entity.recognize.DSAEDU;
 
 import java.util.ArrayList;
 

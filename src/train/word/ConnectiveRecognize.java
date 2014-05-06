@@ -2,10 +2,10 @@ package train.word;
 
 import common.Constants;
 import common.util;
-import entity.DSAConnective;
-import entity.DSASentence;
+import entity.recognize.DSAConnective;
+import entity.recognize.DSASentence;
 import entity.Recognize;
-import entity.SenseRecord;
+import entity.train.SenseRecord;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;

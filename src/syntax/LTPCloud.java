@@ -5,7 +5,7 @@ package syntax;
  * the ltp-cloud service for perform full-stack Chinese language analysis
  * and get results in specified formats
  */
-import entity.SenseRecord;
+import entity.train.SenseRecord;
 import org.dom4j.DocumentException;
 import resource.Resource;
 

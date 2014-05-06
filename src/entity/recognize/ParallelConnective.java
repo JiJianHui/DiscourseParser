@@ -1,7 +1,5 @@
 package entity.recognize;
 
-import entity.DSAArgument;
-
 /**
  * Created with IntelliJ IDEA.
  * User: Ji JianHui

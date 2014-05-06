@@ -2,8 +2,8 @@ package train.word;
 
 import common.Constants;
 import common.util;
-import entity.DSAWordDictItem;
-import entity.SenseRecord;
+import entity.train.DSAWordDictItem;
+import entity.train.SenseRecord;
 import org.ansj.domain.Term;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import org.dom4j.*;

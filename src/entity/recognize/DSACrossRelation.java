@@ -1,7 +1,5 @@
 package entity.recognize;
 
-import entity.DSAConnective;
-
 /**
  * 篇章关系中分为句间关系和句内关系，CrossRelation封装了句间关系
  * Created with IntelliJ IDEA.
