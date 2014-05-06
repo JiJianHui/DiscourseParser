@@ -1,4 +1,4 @@
-package entity;
+package entity.recognize;
 
 /**
  * Created with IntelliJ IDEA.

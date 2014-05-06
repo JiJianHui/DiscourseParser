@@ -1,4 +1,4 @@
-package ltp;
+package syntax;
 
 /*
  * This example shows how to use Java to build http connection and request

@@ -1,4 +1,6 @@
-package entity;
+package entity.recognize;
+
+import entity.DSAArgument;
 
 /**
  * Created with IntelliJ IDEA.

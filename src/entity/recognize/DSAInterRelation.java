@@ -1,4 +1,6 @@
-package entity;
+package entity.recognize;
+
+import entity.DSAConnective;
 
 /**
  * 每个关系标号只能有一个对应的Relation. InterRelation封装的是句内关系。

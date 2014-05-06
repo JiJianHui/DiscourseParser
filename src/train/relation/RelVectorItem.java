@@ -1,4 +1,4 @@
-package recognize.relation;
+package train.relation;
 
 import common.Constants;
 import common.util;
@@ -6,7 +6,6 @@ import resource.Resource;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 
 /**
  * 用于保存机器学习中的每条实例

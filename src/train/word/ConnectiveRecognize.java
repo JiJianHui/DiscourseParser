@@ -1,4 +1,4 @@
-package recognize.word;
+package train.word;
 
 import common.Constants;
 import common.util;
@@ -6,8 +6,6 @@ import entity.DSAConnective;
 import entity.DSASentence;
 import entity.Recognize;
 import entity.SenseRecord;
-import ltp.LTPCloud;
-import org.dom4j.Attribute;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;

@@ -1,4 +1,4 @@
-package common;
+package train.svm;
 
 import libsvm.*;
 import java.io.*;

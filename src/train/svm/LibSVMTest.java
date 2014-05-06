@@ -1,11 +1,13 @@
-package common;
+package train.svm;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 
+import common.Constants;
+import common.util;
 import libsvm.*;
-import recognize.word.ConnVectorItem;
+import train.word.ConnVectorItem;
 
 /***libsvm调用类，主要是用于统一连词识别时候的libsvm调用**/
 public class LibSVMTest
@@ -51,7 +53,7 @@ public class LibSVMTest
         PrintStream fo  = new PrintStream( fPath );
         System.setOut(fo);
 
-        svm_scale.main( trainScaleArgs );
+        svm_scale.main(trainScaleArgs);
 
         fo.close();
 

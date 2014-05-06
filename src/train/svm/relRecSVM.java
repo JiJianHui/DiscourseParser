@@ -1,11 +1,9 @@
-package common;
+package train.svm;
 
-import entity.SenseRecord;
+import common.util;
 import libsvm.svm;
 import libsvm.svm_model;
 import libsvm.svm_node;
-import org.dom4j.DocumentException;
-import resource.Resource;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -60,7 +58,7 @@ public class relRecSVM
         PrintStream fo  = new PrintStream( fPath );
         System.setOut(fo);
 
-        svm_scale.main( trainScaleArgs );
+        svm_scale.main(trainScaleArgs);
 
         fo.close();
 

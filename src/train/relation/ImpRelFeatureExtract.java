@@ -1,4 +1,4 @@
-package recognize.relation;
+package train.relation;
 
 import common.Constants;
 import common.util;

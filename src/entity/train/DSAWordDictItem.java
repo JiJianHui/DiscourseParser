@@ -1,9 +1,8 @@
-package entity;
+package entity.train;
 
 import common.Constants;
 import common.util;
 
-import java.nio.file.attribute.AclEntryType;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;

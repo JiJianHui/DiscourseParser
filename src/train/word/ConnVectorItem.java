@@ -1,4 +1,4 @@
-package recognize.word;
+package train.word;
 
 import common.Constants;
 

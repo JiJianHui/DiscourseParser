@@ -1,4 +1,4 @@
-package entity;
+package entity.train;
 
 /**
  * 该记录保存了新版本下的所有的训练数据，每个数据作为一条Record来使用。

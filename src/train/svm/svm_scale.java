@@ -1,9 +1,7 @@
-package common;
+package train.svm;
 
-import libsvm.*;
 import java.io.*;
 import java.util.*;
-import java.text.DecimalFormat;
 
 class svm_scale
 {

@@ -1,4 +1,4 @@
-package entity;
+package entity.recognize;
 
 import edu.stanford.nlp.trees.Tree;
 
