@@ -107,7 +107,7 @@ public class DiscourseParser
 
             //a: 判断是否是句间关系中的显式关系
             boolean hasExpRel = getCrossExpRelInPara(paragraph, curSentence, nextSentence);
-            
+
             if( hasExpRel ) continue;
 
             //b: 判断是否是隐式关系
