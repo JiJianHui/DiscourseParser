@@ -22,7 +22,6 @@ public class ConnVectorItem
     private String nextPos;
     private String relateTag;
 
-    private String neTag;
 
     //因为特征都是一个个的实数值，因此采用下面的数组来存放
     //private double[] posFeatures;
@@ -36,6 +35,9 @@ public class ConnVectorItem
 
     private double ambiguity;       //该连词在连词词典中指示关系的歧义度。指示最大的关系的概率
     private double occurInDict;    //在连词词典中出现的次数,如果没有出现，则默认为0
+
+    private int connNum;    //该词作为连词的个数
+    private int notConnNum; //该词不作为连词的个数
 
     public ConnVectorItem(String content)
     {
@@ -52,6 +54,9 @@ public class ConnVectorItem
 
         this.ambiguity       = 1.0;
         this.occurInDict     = 0.0;
+
+        this.connNum         = 0;
+        this.notConnNum      = 0;
     }
 
     /**
@@ -117,7 +122,8 @@ public class ConnVectorItem
     public String toLineForLibSvmWithAnsj()
     {
         //获取pos, prevPos和nextPos的相对维数
-        int posIndex = 0, prevIndex = 0, nextIndex = 0;
+        int posIndex  = 0, prevIndex    = 0, nextIndex = 0;
+        int connIndex = 0, notConnIndex = 0;
 
         if( pos == null )     pos = "w";
         if( prevPos == null ) prevPos = "w";
@@ -142,10 +148,12 @@ public class ConnVectorItem
         line += " 2:" + this.positionInLine;
         line += " 3:" + this.ambiguity;
         line += " 4:" + this.occurInDict;
+        line += " 5:" + this.connNum;
+        line += " 6:" + this.notConnNum;
 
-        posIndex  = posIndex  + 5;
-        prevIndex = prevIndex + 6 + Constants.ansjPosTagsNum;
-        nextIndex = nextIndex + 7 + Constants.ansjPosTagsNum + Constants.ansjPosTagsNum;
+        posIndex  = 7 + posIndex;
+        prevIndex = 8 + Constants.ansjPosTagsNum + prevIndex;
+        nextIndex = 9 + Constants.ansjPosTagsNum * 2 + nextIndex;
 
         line += " " + posIndex  + ":1";
         line += " " + prevIndex + ":1";
@@ -171,30 +179,6 @@ public class ConnVectorItem
     public void setLabel(int label) {
         this.label = label;
     }
-
-//    public double[] getPosFeatures() {
-//        return posFeatures;
-//    }
-//
-//    public void setPosFeatures(double[] posFeatures) {
-//        this.posFeatures = posFeatures;
-//    }
-//
-//    public double[] getNextPosFeatures() {
-//        return nextPosFeatures;
-//    }
-//
-//    public void setNextPosFeatures(double[] nextPosFeatures) {
-//        this.nextPosFeatures = nextPosFeatures;
-//    }
-//
-//    public double[] getPrevPosFeatures() {
-//        return prevPosFeatures;
-//    }
-//
-//    public void setPrevPosFeatures(double[] prevPosFeatures) {
-//        this.prevPosFeatures = prevPosFeatures;
-//    }
 
     public double getLength() {
         return length;
@@ -260,5 +244,19 @@ public class ConnVectorItem
         this.relateTag = relateTag;
     }
 
+    public int getConnNum() {
+        return connNum;
+    }
 
+    public void setConnNum(int connNum) {
+        this.connNum = connNum;
+    }
+
+    public int getNotConnNum() {
+        return notConnNum;
+    }
+
+    public void setNotConnNum(int notConnNum) {
+        this.notConnNum = notConnNum;
+    }
 }

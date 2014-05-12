@@ -79,15 +79,15 @@ public class Constants
     public static Integer ConnRecoganize_ML   = 1;
     public static Integer ConnRecoganize_Rule = 0;
 
-    public static String  Libsvm_Origin_Data_Path = "data/svm/libsvmOriginData.txt";
+    public static String  Libsvm_Origin_Data_Path = "data/word/libsvmOriginData.txt";
 
-    public static String  Libsvm_Train_Data_Path  = "data/svm/libsvmTrainData.txt";
-    public static String  Libsvm_Test_Data_Path  = "data/svm/libsvmTestData.txt";
+    public static String  Libsvm_Train_Data_Path  = "data/word/libsvmTrainData.txt";
+    public static String  Libsvm_Test_Data_Path  = "data/word/libsvmTestData.txt";
 
-    public static String  Libsvm_Train_Scale_Data_Path  = "data/svm/libsvmTrainData_scale.txt";
-    public static String  Libsvm_Test_Scale_Data_Path  = "data/svm/libsvmTestData_scale.txt";
+    public static String  Libsvm_Train_Scale_Data_Path  = "data/word/libsvmTrainData_scale.txt";
+    public static String  Libsvm_Test_Scale_Data_Path  = "data/word/libsvmTestData_scale.txt";
 
-    public static String Libsvm_Result_Path = "data/svm/libsvmResult.txt";
+    public static String Libsvm_Result_Path = "data/word/libsvmResult.txt";
 
     //抽取样本时需要过滤掉的词性:人名+地名+机构名 + 位置名 + 代词 + 外文次 + 标点共七种
     //public static String[] Ignore_PosTags = {"nh", "ni", "nl", "ns", "r", "ws", "wp"};

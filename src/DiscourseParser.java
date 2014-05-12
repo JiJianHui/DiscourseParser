@@ -1,7 +1,7 @@
 import common.Constants;
 import entity.recognize.*;
 import entity.train.DSAWordDictItem;
-import train.svm.LibSVMTest;
+import train.svm.wordRecSVM;
 import train.svm.relRecSVM;
 import common.util;
 import edu.stanford.nlp.ling.Label;
@@ -28,7 +28,7 @@ import java.util.*;
  */
 public class DiscourseParser
 {
-    private LibSVMTest connSvmMode;      //连词识别模型
+    private wordRecSVM connSvmMode;      //连词识别模型
     private relRecSVM relationSVMMode;   //隐式关系识别模型
 
     private PhraseParser phraseParser;  //短语结构分析
@@ -53,7 +53,7 @@ public class DiscourseParser
         Resource.LoadConnInP2AndP3();
 
         //6: 加载连词识别svm模型
-        connSvmMode = new LibSVMTest();
+        connSvmMode = new wordRecSVM();
         connSvmMode.loadModel();
 
         //7: 加载短语结构分析
@@ -237,7 +237,7 @@ public class DiscourseParser
             segmentResult += wContent + " ";
 
             //2: 过滤掉噪音词
-            if( !Resource.ExpConnWordDict.containsKey(wContent) ) continue;
+            if( !Resource.allWordsDict.containsKey(wContent) ) continue;
 
             //3：获取词性特征
             String wNextPos = "w", wPrevPos = "w";
@@ -259,7 +259,6 @@ public class DiscourseParser
             if( Resource.allWordsDict.containsKey(wContent) )
             {
                 DSAWordDictItem wordDictItem = Resource.allWordsDict.get(wContent);
-
                 occurTime = wordDictItem.getExpNum();
                 ambiguity = wordDictItem.getMostExpProbality();
             }
@@ -270,6 +269,16 @@ public class DiscourseParser
             //5: 设置标签，因为是预测，可以随意设置标签, 默认不是连词
             if(occurTime < 3) item.setLabel( Constants.Labl_Not_ConnWord );
             else item.setLabel( Constants.Labl_is_ConnWord );
+
+            //设置连词出现次数以及不作为连词出现次数
+            Integer connNum    = Resource.allWordsDict.get(wContent).getExpNum();
+            Integer notConnNum = Resource.NotAsDiscourseWordDict.get(wContent);
+
+            if( connNum == null )    connNum = 0;
+            if( notConnNum == null ) notConnNum = 0;
+
+            item.setConnNum(connNum);
+            item.setNotConnNum(notConnNum);
 
             candidateTerms.add(item);
         }
@@ -871,9 +880,9 @@ public class DiscourseParser
             int parentChildSize = parentEDU.getChildrenEDUS().size();
 
             //查找对应的arg1EDU位置。
-            for(int index = 0; index < parentChildSize; index++)
+            for(int index = 1; index < parentChildSize; index++)
             {
-                if(parentEDU.getChildrenEDUS().get(index) == arg2EDU && index > 0)
+                if(parentEDU.getChildrenEDUS().get(index) == arg2EDU)
                 {
                     arg1EDU = parentEDU.getChildrenEDUS().get(index - 1);
                     break;
@@ -883,8 +892,21 @@ public class DiscourseParser
             //如果是Arg-Conn-Arg类型的没有找到，则肯定是因为arg2EDU是parent的第一个孩子
             if( arg1EDU == null )
             {
+                //再向上找一层,因为会出现并列EDU的情况
+                DSAEDU grandPaEDU = parentEDU.getParentEDU();
+                if( grandPaEDU != null )
+                {
+                    int grandPaChildSize = grandPaEDU.getChildrenEDUS().size();
+                    for(int index = 1; index < grandPaChildSize; index++)
+                    {
+                        if( grandPaEDU.getChildrenEDUS().get(index) == arg2EDU ){
+                            arg1EDU = parentEDU.getChildrenEDUS().get(index-1);
+                        }
+                    }
+                }
+
                 //此时：如果因为arg2EDU就是根部的EDU了，那么直接返回null, 否则是父亲节点的直接右孩子
-                if( arg2EDU.getParentEDU() != null && parentChildSize > 1 )
+                if( arg1EDU == null && arg2EDU.getParentEDU() != null && parentChildSize > 1 )
                 {
                     arg1EDU = parentEDU.getChildrenEDUS().get(1);
                 }

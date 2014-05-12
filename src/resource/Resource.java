@@ -24,10 +24,10 @@ public class Resource
     //public static HashSet<String> ImpConnectivesDict;
 
     //原始标注资源
-    public static LinkedHashSet<SenseRecord> Raw_Train_Annotation;
-    public static LinkedHashSet<SenseRecord> Raw_Train_Annotation_p1;   //新体系下的标注结果的封装
-    public static LinkedHashSet<SenseRecord> Raw_Train_Annotation_p2;
-    public static LinkedHashSet<SenseRecord> Raw_Train_Annotation_p3;
+    public static ArrayList<SenseRecord> Raw_Train_Annotation;
+    public static ArrayList<SenseRecord> Raw_Train_Annotation_p1;   //新体系下的标注结果的封装
+    public static ArrayList<SenseRecord> Raw_Train_Annotation_p2;
+    public static ArrayList<SenseRecord> Raw_Train_Annotation_p3;
 
 
     //连词识别：连词特征抽取时候需要用到的资源
@@ -74,10 +74,10 @@ public class Resource
 
 
         //原始标注语料相关
-        Raw_Train_Annotation     = new LinkedHashSet<SenseRecord>();
-        Raw_Train_Annotation_p1  = new LinkedHashSet<SenseRecord>();
-        Raw_Train_Annotation_p2  = new LinkedHashSet<SenseRecord>();
-        Raw_Train_Annotation_p3  = new LinkedHashSet<SenseRecord>();
+        Raw_Train_Annotation     = new ArrayList<SenseRecord>();
+        Raw_Train_Annotation_p1  = new ArrayList<SenseRecord>();
+        Raw_Train_Annotation_p2  = new ArrayList<SenseRecord>();
+        Raw_Train_Annotation_p3  = new ArrayList<SenseRecord>();
 
         //常见词典相关---用于隐式关系的识别
         SentimentDic             = new HashMap<String, Integer>();
@@ -113,7 +113,7 @@ public class Resource
     public static void LoadExpConnectivesDict() throws IOException
     {
         //防止重复加载
-        if( ExpConnWordDict.size() > 2 ) return;
+        if( NotAsDiscourseWordDict.size() > 2 ) return;
 
         String path = "resource/singWord.txt";
         System.out.println("[--Info--] Loading Single Explicit Connective From: " + path);
@@ -133,10 +133,16 @@ public class Resource
                 //filter the word as needed
                 if(connNum == 0) continue;
 
-                ExpConnWordDict.put(lists[0], connNum);
+                //ExpConnWordDict.put(lists[0], connNum);
                 NotAsDiscourseWordDict.put(lists[0], notConnNum);
             }
         }
+    }
+
+    /**加载一个词作为连词的个数和不作为连词的个数**/
+    public static void LoadWordAsConnAndNotConnDict()
+    {
+
     }
 
     /**
@@ -155,8 +161,7 @@ public class Resource
 
         for(String line : paraLines)
         {
-            String[] lists = line.trim().split("\t");
-
+            String[] lists  = line.trim().split("\t");
             String wContent = lists[0].replace("...", ";");
             Integer wNum    = Integer.valueOf( lists[1] );
 
@@ -293,16 +298,23 @@ public class Resource
                     record.setAnnotation(annot);
                     record.setfPath(fPath);
 
-                    int lineBeg = util.getLineBeg(annot);
                     int connBeg = Integer.valueOf( wSpan.split(";")[0] );
 
-                    if( connBeg < lineBeg ) record.setText( conWord + record.getText() );
+                    //判断连词位于哪一个arg
+                    if( connBeg >= arg1Position[0] && connBeg <= arg1Position[1] )
+                        begIndex = connBeg - arg1Position[0];
+                    else if( connBeg >= arg2Position[0] && connBeg <= arg2Position[1] )
+                        begIndex = connBeg - arg2Position[0];
+                    else if( connBeg < arg1Position[0] )
+                        begIndex = 0;
+                    else if( connBeg > arg2Position[1] )
+                        begIndex = arg2Position[1] - arg2Position[0];
 
-                    record.setConnBeginIndex( connBeg - lineBeg > 0 ? connBeg - lineBeg : 0 );
+                    record.setConnBeginIndex(begIndex);
 
                     results.add(record);
                 }
-                }catch(Exception e){ e.printStackTrace();continue; }
+                }catch(Exception e){ e.printStackTrace();}
             }
 
             if( fPath.endsWith(Constants.P1_Ending) )
@@ -529,10 +541,10 @@ public class Resource
         Resource.LoadSymWordDict();
 
         //判断每个连词的标签并报错
-        for(Map.Entry<String, Integer> entry:Resource.ExpConnWordDict.entrySet())
+        for(Map.Entry<String, DSAWordDictItem> entry:Resource.allWordsDict.entrySet())
         {
             String curConn = entry.getKey();
-            int connNum    = entry.getValue();
+            int connNum    = entry.getValue().getExpNum();
 
             if(connNum < 3) continue;
 

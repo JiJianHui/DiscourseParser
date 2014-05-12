@@ -59,8 +59,8 @@ public class ImpRelFeatureExtract
             String arg1Content   = curRecord.getArg1();
             String arg2Content   = curRecord.getArg2();
 
-            if(relType.equalsIgnoreCase(Constants.EXPLICIT)) continue;
             //if(curRecord.getRelNO().equalsIgnoreCase(Constants.DefaultRelNO)) continue;
+            if(relType.equalsIgnoreCase(Constants.EXPLICIT)) continue;
             if( arg1Content.length() > 400 || arg2Content.length() > 400 ) continue;
 
             try
@@ -74,9 +74,7 @@ public class ImpRelFeatureExtract
 
                 items.add(item);
             }
-            catch (OutOfMemoryError e){
-                continue;
-            }
+            catch (OutOfMemoryError e){e.printStackTrace();}
         }
 
         //将items转换为libsvm需要的格式，主要是将同义词标签进行转换
@@ -286,11 +284,11 @@ public class ImpRelFeatureExtract
         HashMap<String, Integer> connCagInCiLin = new HashMap<>();
 
         //判断每个连词的标签并报错
-        for(Map.Entry<String, Integer> entry:Resource.ExpConnWordDict.entrySet())
+        for(Map.Entry<String, DSAWordItem> entry:Resource.allWordsDict.entrySet())
         {
             String curConn = entry.getKey();
 
-            int connNum    = entry.getValue();
+            int connNum    = entry.getValue().getExpNum();
             if(connNum < 3) continue;
 
             String curConnCag = util.getWordTagInSym(curConn);

@@ -272,7 +272,7 @@ public class DataAnalysis
         Resource.LoadExpConnectivesDict();
         Resource.LoadConnInP2AndP3();
 
-        for( Map.Entry<String, Integer> entry:Resource.ExpConnWordDict.entrySet() )
+        for( Map.Entry<String, DSAWordDictItem> entry:Resource.allWordsDict.entrySet() )
         {
             String wContent = entry.getKey();
 

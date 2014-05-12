@@ -30,7 +30,7 @@ public class InterOrCrossWord
             if( record.getType().equalsIgnoreCase(Constants.IMPLICIT) ) continue;
 
             String wContent = record.getConnective().trim();
-            if( !Resource.ExpConnWordDict.containsKey(wContent) ) continue;
+            if( !Resource.allWordsDict.containsKey(wContent) ) continue;
 
             String feature = "1 " + this.getVerbFeature(record);
             crossFeatures.add(feature);
@@ -41,7 +41,7 @@ public class InterOrCrossWord
             if( record.getType().equalsIgnoreCase(Constants.IMPLICIT) ) continue;
 
             String wContent = record.getConnective().trim();
-            if( !Resource.ExpConnWordDict.containsKey(wContent) ) continue;
+            if( !Resource.allWordsDict.containsKey(wContent) ) continue;
 
             String feature = "0 " + this.getVerbFeature(record);
             crossFeatures.add(feature);

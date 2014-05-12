@@ -5,6 +5,9 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import entity.train.SenseRecord;
+import org.ansj.domain.Term;
+import org.ansj.recognition.NatureRecognition;
 import org.dom4j.*;
 import org.dom4j.io.SAXReader;
 import resource.Resource;
@@ -133,7 +136,6 @@ public class util
 
         return index;
     }
-
 
 
     /**将一个XML文件转换为DOM对象，用于测试**/
@@ -565,9 +567,11 @@ public class util
     /**在max范围内获取length个不重复的随机数。返回的是一个Boolean数组，如果下表index对应的值为true，就代表产生了他**/
     public static boolean[] getRandomArrays(int max, int length)
     {
+        int tempValue   = 0;
+        Random r        = new Random(max);
         boolean[] exist = new boolean[max]; //判断是否出现过
-        Random r = new Random(max);
-        int tempValue = 0;
+
+        for( int i = 0; i < max; i++) exist[i] = false;
 
         for(int i = 0; i < length; i++)
         {
@@ -577,6 +581,50 @@ public class util
         }
 
         return exist;
+    }
+
+    /**获取词性标注的信息，输入的是分好词的句子。返回的是一个词性标注好的集合**/
+    public static List<Term> getSegmentedSentencePosTag(String sentContent)
+    {
+        List<String> lists  = Arrays.asList( sentContent.split(" ") );
+        List<Term>   words  = NatureRecognition.recognition(lists, 0);
+
+        for( int index = 0; index < words.size(); index++ )
+        {
+            Term curTerm = words.get(index);
+            if(index > 0) {curTerm.setFrom( words.get(index - 1) );}
+            if(index < words.size() - 1){curTerm.setTo( words.get(index+1) );}
+        }
+
+        return words;
+    }
+
+    public static String removeAllBlankAndProun(String source)
+    {
+        String result = removeAllBlank(source);
+
+        result = result.replaceAll("，", "").replaceAll(",", "");
+        result = result.replaceAll("。", "").replaceAll("\\.", "");
+        result = result.replaceAll("；", "").replaceAll(";", "");
+        result = result.replaceAll("？", "").replaceAll("\\?", "");
+        result = result.replaceAll("：", "").replaceAll(":", "");
+
+        return  result;
+    }
+
+
+    /**计算两个文本中的相似的字符数目.sour是最短的，dest是最大的**/
+    public static int countSameCharatersNum(String sour, String dest)
+    {
+        int num = 0;
+
+        for(int index = 0; index < sour.length(); index++)
+        {
+            String curStr = sour.substring(index, index+1);
+            if( dest.contains(curStr) ) num++;
+        }
+
+        return num;
     }
 
     /**将一个集合随机分成训练集和测试集合。**/
