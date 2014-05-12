@@ -1,5 +1,6 @@
 package common;
 
+import entity.train.DSAWordDictItem;
 import org.ansj.dic.LearnTool;
 import org.ansj.domain.Term;
 import org.ansj.recognition.NatureRecognition;
@@ -29,8 +30,56 @@ public class Test
 
         //Test.testHashMapSort();
         //Test.testChineseWord();
-        Test.testAnsjSegmentWord();
+        //Test.testAnsjSegmentWord();
+        //Test.testHashSetPlusHashSet();
+        //Test.testRemoveAllBlankAndPron();
+        //Test.testSameWordsNum();
+        //Test.testTreeEyee();
+        Integer a = null;
+        double b = a;
+        System.out.println(a);
+        System.out.println(b);
+    }
 
+    public static void testTreeEyee()
+    {
+        Integer one = null;
+        Integer two = 2;
+        Integer three = one==null?0:one;
+        Integer four  = two==null?0:two;
+
+        System.out.println(three);
+        System.out.println(four);
+    }
+    public static void testSameWordsNum()
+    {
+        String sour = "因为 创业 的 凭藉 dfdf 不 再 是 传统 的 资产 与 土地 使得 创业 的 门槛 愈来愈 低";
+        String dest = "正 因为 创业 的 凭藉 不 再 是 传统 的 资产 与 土地 ， 使得 创业 的 门槛 愈来愈 低   然而 ， 值得 注意 的 是 ： 创业 成功 的 难度 却 愈来愈 高 。";
+        int num = util.countSameCharatersNum(util.removeAllBlankAndProun(sour),util.removeAllBlankAndProun(dest));
+        System.out.println("same char num: " + num);
+    }
+
+    public static void testRemoveAllBlankAndPron()
+    {
+        String source = "正 因为 创业 的 凭藉 不 再 是 传统 的 资产 与 土地 ， 使得 创业 的 门槛 愈来愈 低。   然而 ， 值得. ? ？ 注意 的 是 ：";
+        String result = util.removeAllBlankAndProun(source);
+        System.out.println(source);
+        System.out.println(result);
+    }
+
+    /**测试两个HashSet相加得到另外的HashSet**/
+    public static void testHashSetPlusHashSet()
+    {
+        LinkedHashSet<String> a = new LinkedHashSet<String>();
+        LinkedHashSet<String> b = new LinkedHashSet<String>();
+
+        a.add("a0");a.add("a1");a.add("a2");
+        b.add("b0");b.add("b1");b.add("b2");
+
+        LinkedHashSet<String> c = new LinkedHashSet<String>();
+        c.addAll(a);c.addAll(b);
+
+        for(String cur:c) System.out.println(cur);
     }
 
     public static void testChineseWord()
@@ -193,11 +242,11 @@ public class Test
         HashMap<String, Integer> connCagInCiLin = new HashMap<>();
 
         //判断每个连词的标签并报错
-        for(Map.Entry<String, Integer> entry:Resource.ExpConnWordDict.entrySet())
+        for(Map.Entry<String, DSAWordDictItem> entry:Resource.allWordsDict.entrySet())
         {
             String curConn = entry.getKey();
 
-            int connNum    = entry.getValue();
+            int connNum    = entry.getValue().getExpNum();
             if(connNum < 3) continue;
 
             String curConnCag = getWordTagInSym(curConn);

@@ -108,7 +108,7 @@ public class Statics
      * @param records
      * @param wordsRel
      */
-    private void makeWordDict(LinkedHashSet<SenseRecord> records, HashMap<String, DSAWordDictItem> wordsRel)
+    private void makeWordDict(ArrayList<SenseRecord> records, HashMap<String, DSAWordDictItem> wordsRel)
     {
 
         for(SenseRecord record:records)
