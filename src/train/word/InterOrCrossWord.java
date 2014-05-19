@@ -101,6 +101,32 @@ public class InterOrCrossWord
         return  line;
     }
 
+    /**仅仅使用连词在p2和p3中的分布来判断一个连词属于句内还是句间连词**/
+    public void predictJustUseDict() throws IOException,DocumentException
+    {
+        Resource.LoadRawRecord();
+        Resource.LoadWordRelDict();
+        Resource.LoadConnInP2AndP3();
+
+        ArrayList<SenseRecord> records = new ArrayList<SenseRecord>();
+        records.addAll( Resource.Raw_Train_Annotation_p3 );
+        records.addAll( Resource.Raw_Train_Annotation_p2 );
+
+        for(SenseRecord record : records)
+        {
+            String conn = record.getConnective();
+
+            if( conn.contains(";") ) continue;
+            if( !Resource.allWordsDict.containsKey(conn) ) continue;
+
+            int inP2Num = Resource.ConnInP2AndP3.get(conn)[0];
+            int inP3Num = Resource.ConnInP2AndP3.get(conn)[1];
+
+
+        }
+    }
+
+
     public static void main(String[] args) throws IOException, DocumentException
     {
         InterOrCrossWord temp = new InterOrCrossWord();

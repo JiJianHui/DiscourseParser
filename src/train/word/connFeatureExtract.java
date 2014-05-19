@@ -22,10 +22,6 @@ import java.util.*;
  */
 public class connFeatureExtract
 {
-    private ArrayList<ConnVectorItem> items;
-    private ArrayList<ConnVectorItem> filterItems;
-
-
     private ArrayList<ArrayList<String>> notLabeledWords = new ArrayList<ArrayList<String>>();
 
     public connFeatureExtract() throws DocumentException, IOException
@@ -44,20 +40,18 @@ public class connFeatureExtract
      */
     public void extractFeatures() throws IOException, DocumentException
     {
-        this.items       = new ArrayList<ConnVectorItem>();
-        this.filterItems = new ArrayList<ConnVectorItem>();
-
-        String path = Constants.Libsvm_Origin_Data_Path;
+        ArrayList<ConnVectorItem> items = new ArrayList<ConnVectorItem>();
+        ArrayList<ConnVectorItem> filterItems = new ArrayList<ConnVectorItem>();
 
         //1：获取特征向量组
         //this.getLabeledTrainData( this.items );
-        this.getLabeledTrainDataWithAnsj(this.items);
+        this.getLabeledTrainDataWithAnsj(items);
 
         //2：对抽取到的特征进行处理，过滤
-        this.filterItem( this.items, this.filterItems );
+        this.filterItem(items, filterItems);
 
         //3：将特征转换为libsvm要求的格式
-        this.convertToLibsvmData( this.filterItems );
+        this.convertToLibsvmData(filterItems);
 
     }
 
@@ -127,13 +121,14 @@ public class connFeatureExtract
                 if( nextConn != null && isSameWithNext && item.getContent().equals(nextConn) ){
                     item.setLabel( Constants.Labl_is_ConnWord );
                 }
+
                 //判断该连词作为连词和不作为连词的比例
-                Integer asConnNum    = Resource.allWordsDict.get(item.getContent()).getExpNum();
-                Integer notAsConnNum = Resource.NotAsDiscourseWordDict.get(item.getContent());
+                Integer asConnNum    = Resource.AsDiscourseWordDict.get( item.getContent() );
+                Integer notAsConnNum = Resource.NotAsDiscourseWordDict.get( item.getContent() );
 
                 double ambugity = ( notAsConnNum == null )? 0 : notAsConnNum*1.0 / (notAsConnNum+asConnNum);
 
-                if( ambugity < 0.03 && asConnNum > 100 ) item.setLabel( Constants.Labl_is_ConnWord );
+                if( ambugity < 0.00006 && asConnNum > 100 ) item.setLabel( Constants.Labl_is_ConnWord );
 
                 datas.add(item);
             }
@@ -206,111 +201,6 @@ public class connFeatureExtract
         return item;
     }
 
-    /**
-     * 根据标注语料生成连词识别训练数据.此方法生成的是原始的训练数据，并没有按照机器学习的要求生成统一格式的数据。
-     * @throws DocumentException
-     * @throws IOException
-     */
-    public void getLabeledTrainData(ArrayList<ConnVectorItem> datas) throws DocumentException, IOException
-    {
-        System.out.println("[--Info--]: Get Labeled Train Instances From Sense Record..." );
-
-        //LTP分词结果处理
-        //针对每条记录，加载ltp分析结果,根据ltp来抽取词性以及
-        for(SenseRecord record:Resource.Raw_Train_Annotation_p3)
-        {
-            //查找对应的ltp分析结果保存的文件位置
-            String content   = record.getText().trim();
-            Integer resultId = Resource.Ltp_Xml_Result_SentID_P3.get( content );
-
-            if( resultId == null ) continue;
-
-            String xmlPath = Constants.Ltp_XML_Result_P3 + "\\sent" + resultId + ".xml";
-
-            //该记录的类型和其中的连词
-            boolean  isExplicit = record.getType().equalsIgnoreCase(Constants.EXPLICIT);
-            String   connWord   = record.getConnective();
-            //String[] connWords  = record.getConnective().split( Constants.Parallel_Word_Seperator );
-
-            //-------------------------------------------------------
-            //分析ltp结果, 将每个词都打包为一个item，样本。
-            Document domObj  = util.parseXMLFileToDOM(xmlPath, "gbk");
-            Element rootNode = domObj.getRootElement();
-            Element noteNode = rootNode.element("note");
-
-            if( noteNode.attribute("pos").getText().equalsIgnoreCase("n") )    continue ;
-            if( noteNode.attribute("parser").getText().equalsIgnoreCase("n") ) continue;
-
-            Element paraNode  = rootNode.element("doc").element("para");
-
-            //-----------------------------------------------
-            //针对每个词，抽取信息来封装为一个样本
-            for(Iterator iterator = paraNode.elementIterator(); iterator.hasNext();)
-            {
-                Element sentNode    = (Element) iterator.next();
-                String  sentContent = sentNode.attribute("cont").getText();
-
-                int        beginIndex = 0;     //为了查找一个词在该句子中的位置，使用beginIndex来防止同名的词
-                String       prevPos  = "wp";
-                ConnVectorItem prevItem = null; //用于设置上一个词条的nextPos。
-
-                for( Iterator ite = sentNode.elementIterator(); ite.hasNext(); )
-                {
-                    Element wordNode = (Element)ite.next();
-                    String nodeName  = wordNode.getName();
-
-                    //出现的每个词都是样本
-                    if( nodeName.equals("word") )
-                    {
-                        String wContent = wordNode.attribute("cont").getText();
-                        String wPosTag  = wordNode.attribute("pos").getText();
-                        String wRelate  = wordNode.attribute("relate").getText();
-
-                        ConnVectorItem item = new ConnVectorItem(wContent);
-
-                        //3：设置词性特征
-                        item.setPos(wPosTag);
-                        item.setRelateTag(wRelate);
-                        item.setPrevPos(prevPos);
-                        prevPos = wPosTag;
-
-                        //设置上一个item的nextPos以及自身的nextPos
-                        if( prevItem != null ) prevItem.setNextPos(wPosTag);
-                        prevItem = item;
-
-                        //4：判断该词是正样本还是负样本. 目前多个词组成的连词当做负样本，以后使用模板识别
-                        if( isExplicit && connWord.equalsIgnoreCase(wContent) )
-                        {
-                            item.setLabel( Constants.Labl_is_ConnWord );
-                        }
-
-                        //5：判断该词在句子中的的位置
-                        beginIndex = sentContent.indexOf(wContent, beginIndex);
-                        item.setPositionInLine( beginIndex );
-
-                        //6：判断该词在连词词典中出现的次数,以及歧义性
-                        double occurTime = 0.0, ambiguity = 1.0;
-
-                        if( Resource.allWordsDict.containsKey(wContent) )
-                        {
-                            DSAWordDictItem wordItem = Resource.allWordsDict.get(wContent);
-
-                            occurTime = wordItem.getExpNum();
-                            ambiguity = wordItem.getMostExpProbality();
-                        }
-
-                        item.setAmbiguity(ambiguity);
-                        item.setOccurInDict(occurTime);
-
-                        datas.add(item);
-                    }
-                }
-                //设置最后一个item的nextPosTage
-                prevItem.setNextPos("wp");
-            }
-        }
-    }
-
     public void filterItem(ArrayList<ConnVectorItem> datas, ArrayList<ConnVectorItem> results) throws IOException
     {
         HashMap<String, Integer> asConnWords    = new HashMap<String, Integer>();
@@ -370,6 +260,7 @@ public class connFeatureExtract
     {
         ArrayList<String> trainLines = new ArrayList<String>();
         ArrayList<String> testLines  = new ArrayList<String>();
+        ArrayList<String> viewLines  = new ArrayList<String>();
 
         //将数据拆随机分为训练数据和测试数据
         int originNum   = items.size(), trainNum  = originNum / 5 * 4;
@@ -379,20 +270,29 @@ public class connFeatureExtract
         for(int index = 0; index < originNum; index++)
         {
             ConnVectorItem item  = items.get(index);
+
+            int    type = item.getLabel();
             String line = item.toLineForLibSvmWithAnsj();
 
-            int type = item.getLabel();
             if( type == Constants.Labl_is_ConnWord ) allCorrectNum++;
 
-            if( exist[index] ){
+            if( exist[index] )
+            {
                 trainLines.add(line);
                 if( type == Constants.Labl_is_ConnWord ) trainCorrectNum++;
             }
-            else{
+            else
+            {
                 testLines.add(line);
                 if( type == Constants.Labl_is_ConnWord ) testCorrectNum++;
             }
+
+            //debug 输出item的实际内容
+            String viewLine = item.toLineForView();
+            viewLines.add(viewLine);
         }
+
+        util.writeLinesToFile("data/word/wordItems.txt", viewLines);
         util.writeLinesToFile("data/word/wordTrainData.txt", trainLines);
         util.writeLinesToFile("data/word/wordTestData.txt", testLines);
 
@@ -421,6 +321,90 @@ public class connFeatureExtract
         util.writeLinesToFile(fPath, lines);
     }
 
+    //------------------------------Process Inter or Cross Word----------------
+
+    /**仅仅使用连词在p2和p3中的分布来判断一个连词属于句内还是句间连词**/
+    public void predictJustUseDict() throws IOException,DocumentException
+    {
+        Resource.LoadRawRecord();
+        Resource.LoadWordRelDict();
+        Resource.LoadConnInP2AndP3();
+
+        ArrayList<SenseRecord> records = new ArrayList<SenseRecord>();
+        records.addAll( Resource.Raw_Train_Annotation_p3 );
+        records.addAll( Resource.Raw_Train_Annotation_p2 );
+
+        int interNum = 0, interRec = 0, interCorrect = 0;  //第一类识别结果
+        int crossNum = 0, crossRec = 0, crossCorrect = 0;  //第二类识别结果
+
+        for( SenseRecord record : records )
+        {
+            String conn   = record.getConnective();
+            int posInLine = record.getConnBeginIndex();
+            String sent   = (record.getConnArgIndex() == 1) ? record.getArg1():record.getArg2();
+
+            if( record.getType().equalsIgnoreCase(Constants.IMPLICIT) ) continue;
+            if( !Resource.allWordsDict.containsKey(conn) ) continue;
+            if( conn.contains(";") ) continue;
+
+            //自动识别结果
+            int result = markConnAsInterOrCross(conn, posInLine, sent);
+            if( result == Constants.Label_Cross_ConnWord ) crossRec++;
+            if( result == Constants.Label_Inter_ConnWord ) interRec++;
+
+            //修改识别准确数据
+            if( record.getfPath().endsWith(Constants.P2_Ending) )
+            {
+                crossNum++;
+                if( result == Constants.Label_Cross_ConnWord ) crossCorrect++;
+            }
+            else
+            {
+                interNum++;
+                if( result == Constants.Label_Inter_ConnWord ) interCorrect++;
+            }
+        }
+        //计算每一类的prf
+        double pCross = crossCorrect * 1.0 / crossRec;
+        double rCross = crossCorrect * 1.0 / crossNum;
+        double fCross = 2 * pCross * rCross / (pCross + rCross);
+
+        double pInter = interCorrect * 1.0 / interRec;
+        double rInter = interCorrect * 1.0 / interNum;
+        double fInter = 2 * pInter * rInter / (pInter + rInter);
+
+        System.out.println("Cross: allNum: " + crossNum + " recNum: " + crossRec + " recCorrect: " + crossCorrect);
+        System.out.println("Inter: allNum: " + interNum + " recNum: " + interRec + " recCorrect: " + interCorrect);
+        System.out.format("Corss: P: %.2f R: %.2f F: %.2f\n", pCross, rCross, fCross);
+        System.out.format("Inter: P: %.2f R: %.2f F: %.2f\n", pInter, rInter, fInter);
+    }
+
+    /**判断一个连词是句间连词还是句内连词.输入是一个连词内容，返回的结果为：
+     * 0：不是连词  1：句内连词  2：句间连词**/
+    public int markConnAsInterOrCross(String conn, int positionInLine, String sentence)
+    {
+        if( !Resource.allWordsDict.containsKey(conn) ) return Constants.Labl_Not_ConnWord;
+        if( conn.contains(";") ) return Constants.Label_Inter_ConnWord;
+
+        //1: 获取该连词在p2和p3中分别出现的次数
+        int numInP2 = 0, numInP3 = 0;
+        if( Resource.ConnInP2AndP3.containsKey(conn) )
+        {
+            numInP2 = Resource.ConnInP2AndP3.get(conn)[0];
+            numInP3 = Resource.ConnInP2AndP3.get(conn)[1];
+        }
+
+        //4：是否位于第一个短句内
+        boolean inSentenceHead = true;
+        String temp = sentence.substring(0, positionInLine);
+
+        if( temp.contains("，") || temp.contains(",") ) inSentenceHead = false;
+
+        //紧紧依靠字典等特征来判断一个连词的句间和句内属性
+        if( numInP2 > numInP3 && inSentenceHead ) return Constants.Label_Cross_ConnWord;
+
+        return Constants.Label_Inter_ConnWord;
+    }
 
     public static void main(String[] args) throws IOException, DocumentException
     {
@@ -430,6 +414,9 @@ public class connFeatureExtract
         recognize.extractFeatures();
 
         //recognize.saveNotLabeledWords();
+
+        //2: 计算句内连词和句间连词识别的效果
+        //recognize.predictJustUseDict();
     }
 
 }

@@ -15,8 +15,10 @@ public class SenseRecord
     private String relNO;
 
     private String text;
+
     private String connective;
     private int connBeginIndex;
+    private int connArgIndex;  //连词位于哪个arg,因为标注的时候默认第一个就是arg1，但是我们的假设是连词紧跟的是arg2
 
     private String arg1;
     private String arg2;
@@ -109,5 +111,13 @@ public class SenseRecord
 
     public void setConnBeginIndex(int connBeginIndex) {
         this.connBeginIndex = connBeginIndex;
+    }
+
+    public int getConnArgIndex() {
+        return connArgIndex;
+    }
+
+    public void setConnArgIndex(int connArgIndex) {
+        this.connArgIndex = connArgIndex;
     }
 }

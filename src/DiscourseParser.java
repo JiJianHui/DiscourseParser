@@ -1,6 +1,7 @@
 import common.Constants;
 import entity.recognize.*;
 import entity.train.DSAWordDictItem;
+import org.ansj.splitWord.analysis.ToAnalysis;
 import train.svm.wordRecSVM;
 import train.svm.relRecSVM;
 import common.util;
@@ -45,9 +46,6 @@ public class DiscourseParser
         //3: 加载标注好的训练数据
         //Resource.LoadRawRecord();
 
-        //4: 加载并列连词词典
-        Resource.LoadParallelWordDict();
-
         //5: 加载连词Arg位置统计数据
         Resource.LoadConnectiveArgs();
         Resource.LoadConnInP2AndP3();
@@ -64,6 +62,9 @@ public class DiscourseParser
         relationSVMMode.loadModel();
 
         impRelFeatureExtract = new ImpRelFeatureExtract();
+
+        //9: 加载关系列表，里面包含了关系编号和关系名称的对应。
+        Resource.LoadSenseList();
     }
 
 
@@ -207,7 +208,7 @@ public class DiscourseParser
             }
         }
         else{
-            words = NlpAnalysis.parse( util.removeAllBlank(sentence.getContent()) );
+            words = ToAnalysis.parse(util.removeAllBlank(sentence.getContent()));
         }
 
         sentence.setAnsjWordTerms(words);
@@ -356,10 +357,12 @@ public class DiscourseParser
 
         DSAConnective parallelConnective = null;
 
-        for(Map.Entry<String, Integer> entry:Resource.ExpParallelWordDict.entrySet())
+        for(Map.Entry<String, DSAWordDictItem> entry:Resource.allWordsDict.entrySet())
         {
+            if( !entry.getValue().isParallelWord() ) continue;
+
             String parallelWord = entry.getKey();
-            Integer numInDict = entry.getValue();
+            Integer numInDict   = entry.getValue().getExpNum();
 
             //if( numInDict < 2 ) continue;
 
@@ -1064,40 +1067,6 @@ public class DiscourseParser
     /***识别具体的显式关系类型**/
     private void recognizeExpRelationType(DSASentence sentence)
     {
-        /**
-        for( DSARelation candiatateRel : sentence.getRelations() )
-        {
-            if( candiatateRel.getDsaConnective() == null ) continue;
-
-            String connWord = candiatateRel.getDsaConnective().getContent();
-            String relNO    = Resource.connectiveRelationDict.get(connWord);
-
-            if( relNO == null ) relNO = Constants.DefaultRelNO;
-
-            candiatateRel.setRelNO( relNO );
-        }
-         **/
-        /**
-        //根据识别出来的显式连词来识别显式关系
-        for(DSAConnective curWord : sentence.getConWords() )
-        {
-            if( curWord.getArg1EDU() == null || curWord.getArg2EDU() == null )
-            {
-                continue;
-            }
-
-            String wContent = curWord.getContent();
-            DSAWordDictItem item = Resource.allWordsDict.get(wContent);
-
-            double mostExpProbality     = item.getMostExpProbality();
-            String mostExpProbalityType = item.getMostExpProbalityRelNO();
-
-            mostExpProbalityType = util.convertOldRelIDToNew(mostExpProbalityType);
-
-            curWord.setExpRelProbality(mostExpProbality);
-            curWord.setExpRelType(mostExpProbalityType);
-        }
-         **/
         for( DSAInterRelation curRel:sentence.getRelations() )
         {
             DSAConnective curConn = curRel.getDsaConnective();

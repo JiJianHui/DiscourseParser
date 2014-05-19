@@ -162,6 +162,21 @@ public class ConnVectorItem
         return line;
     }
 
+    /***将Item的内容打印出来，以方便检查**/
+    public String toLineForView()
+    {
+        String line = String.valueOf( this.label );
+
+        line += " 0:" + this.content;
+        line += " posInLine:" + this.positionInLine;
+        line += " ambiguity:" + this.ambiguity;
+        line += " occurInDict:" + this.occurInDict;
+        line += " connNum:" + this.connNum;
+        line += " NotConnNum:" + this.notConnNum;
+
+        return line;
+    }
+
     //getter and setter
 
     public String getContent() {

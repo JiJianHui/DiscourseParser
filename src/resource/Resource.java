@@ -31,15 +31,12 @@ public class Resource
 
 
     //连词识别：连词特征抽取时候需要用到的资源
-    public static HashMap<String, Integer> ExpConnWordDict;
-    public static HashMap<String, Integer> ImpConnWordDict;
+    public static HashMap<String, Integer> AsDiscourseWordDict;
     public static HashMap<String, Integer> NotAsDiscourseWordDict;
-    public static HashMap<String, Integer> ExpParallelWordDict;          //保存了平行连词
 
     public static HashMap<String, Integer[]> ConnInP2AndP3; //每个连词在句间关系和句内关系中出现的次数
 
     public static LinkedHashMap<String, DSAWordDictItem> allWordsDict;  //存放了与一个关联词对应的关联词类型的整个信息
-    public static LinkedHashMap<String, String> connectiveRelationDict; //存放了连词和关系标号的对应关系
 
     public static HashSet<String> Stop_Words = new HashSet<String>(); //停用词词表
     public static HashMap<String, Integer[]> ConnectiveArgNum; //连词连接arg类型:arg-conn-arg和conn-arg-arg
@@ -56,18 +53,17 @@ public class Resource
     public static ArrayList<String>        ConnTagInSymCiLinSorted; //为了确保特征索引的时候是一致的
     public static ArrayList<String>        AllWordTagsInSymCiLin; //所有词在同义词词林中的标签集合(前四位标签)--Aa01
 
+    public static LinkedHashMap<String, String> senseLists;
+
     static
     {
         //连词词典以及连词识别相关
-        ExpConnWordDict          = new HashMap<String, Integer>();
-        ImpConnWordDict          = new HashMap<String, Integer>();
+        AsDiscourseWordDict      = new HashMap<String, Integer>();
         NotAsDiscourseWordDict   = new HashMap<String, Integer>();
-        ExpParallelWordDict      = new HashMap<String, Integer>();
 
         ConnInP2AndP3            = new HashMap<String, Integer[]>();
 
         allWordsDict             = new LinkedHashMap<String, DSAWordDictItem>();
-        connectiveRelationDict   = new LinkedHashMap<String, String>();
 
         ConnectiveArgNum         = new HashMap<String, Integer[]>();
         Ltp_Xml_Result_SentID_P3 = new HashMap<String, Integer>();
@@ -87,6 +83,8 @@ public class Resource
         ConnTagInSymCiLin        = new HashMap<String, Integer>();
         ConnTagInSymCiLinSorted  = new ArrayList<String>();
         AllWordTagsInSymCiLin    = new ArrayList<String>();
+
+        senseLists               = new LinkedHashMap<String,String>();
     }
 
 
@@ -103,8 +101,6 @@ public class Resource
         LoadWordRelDict();
 
         LoadRawRecord();
-
-        LoadParallelWordDict();
     }
 
     /**
@@ -115,8 +111,8 @@ public class Resource
         //防止重复加载
         if( NotAsDiscourseWordDict.size() > 2 ) return;
 
-        String path = "resource/singWord.txt";
-        System.out.println("[--Info--] Loading Single Explicit Connective From: " + path);
+        String path = "resource/wordAndNotWord.txt";
+        System.out.println("[--Info--] Loading the number of a word as Connective and Not as a Connective From: " + path);
 
         //加载单个连词
         ArrayList<String> lines = new ArrayList<String>();
@@ -133,7 +129,7 @@ public class Resource
                 //filter the word as needed
                 if(connNum == 0) continue;
 
-                //ExpConnWordDict.put(lists[0], connNum);
+                AsDiscourseWordDict.put(lists[0], connNum);
                 NotAsDiscourseWordDict.put(lists[0], notConnNum);
             }
         }
@@ -146,30 +142,6 @@ public class Resource
     }
 
     /**
-     * 加载并列连词词表
-     */
-    public static void LoadParallelWordDict() throws IOException
-    {
-        if( ExpParallelWordDict.size() > 2 ) return;
-
-        //加载并列连词
-        String path = Constants.ExpParallelWord_Dict_Path;
-        System.out.println("[--Info--] Loading Parallel Explicit Connective From: " + path);
-
-        ArrayList<String> paraLines = new ArrayList<String>();
-        util.readFileToLines(path, paraLines);
-
-        for(String line : paraLines)
-        {
-            String[] lists  = line.trim().split("\t");
-            String wContent = lists[0].replace("...", ";");
-            Integer wNum    = Integer.valueOf( lists[1] );
-
-            ExpParallelWordDict.put(wContent, wNum);
-        }
-    }
-
-    /**
      * 读取关联词和关系的指示文件，文件格式为(10)
      * 实际上    2    1    1    1    1    [X]5-1-1    1    [Y]5-1-1    1
      * 每次加载的是 关联词 + 后面的统计信息
@@ -178,7 +150,7 @@ public class Resource
     {
         if( allWordsDict.size() > 2 ) return;
 
-        String path = Constants.Connective_Relation_Path;
+        String path = "resource/allWordInP3.txt";
         System.out.println("[--Info--] Loading Word and Sense Dict From: " + path);
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path), "GBK"));
@@ -264,6 +236,11 @@ public class Resource
                     if( conWord.equalsIgnoreCase("null") ) continue;
                     if( wSpan.equalsIgnoreCase("null") ) continue;
 
+                    if( conWord.equalsIgnoreCase("结果") ) {
+                        System.out.println(fPath);
+                        System.out.println(annot);
+                    }
+
                     int[] arg1Position = new int[2];
                     int[] arg2Position = new int[2];
 
@@ -271,8 +248,8 @@ public class Resource
                     arg1Position[0] = Integer.valueOf(lists[0]);
                     arg1Position[1] = Integer.valueOf(lists[1]);
 
-                    arg2Position[0] = Integer.valueOf(lists[0]);
-                    arg2Position[1] = Integer.valueOf(lists[1]);
+                    arg2Position[0] = Integer.valueOf(lists[2]);
+                    arg2Position[1] = Integer.valueOf(lists[3]);
 
                     //去除长度过长的语句。
                     //if( fPath.endsWith(Constants.P3_Ending) && source.length() > Constants.Max_Sentence_Length )
@@ -298,21 +275,34 @@ public class Resource
                     record.setAnnotation(annot);
                     record.setfPath(fPath);
 
+                    results.add(record);
+
+                    if( type.equalsIgnoreCase(Constants.IMPLICIT) ) continue;
+
                     int connBeg = Integer.valueOf( wSpan.split(";")[0] );
 
                     //判断连词位于哪一个arg
-                    if( connBeg >= arg1Position[0] && connBeg <= arg1Position[1] )
-                        begIndex = connBeg - arg1Position[0];
-                    else if( connBeg >= arg2Position[0] && connBeg <= arg2Position[1] )
-                        begIndex = connBeg - arg2Position[0];
-                    else if( connBeg < arg1Position[0] )
+                    if( connBeg < arg1Position[0] ){
                         begIndex = 0;
-                    else if( connBeg > arg2Position[1] )
-                        begIndex = arg2Position[1] - arg2Position[0];
-
+                        record.setConnArgIndex(1);
+                    }
+                    else if( connBeg >= arg1Position[0] && connBeg < arg1Position[1] ){
+                        begIndex = connBeg - arg1Position[0];
+                        record.setConnArgIndex(1);
+                    }
+                    else if( connBeg >= arg1Position[1] && connBeg < arg2Position[0] ){
+                        begIndex = 0;
+                        record.setConnArgIndex(2);
+                    }
+                    else if( connBeg >= arg2Position[0] && connBeg <= arg2Position[1] ){
+                        begIndex = connBeg - arg2Position[0];
+                        record.setConnArgIndex(2);
+                    }
+                    else{
+                        begIndex = connBeg - arg2Position[1];
+                        record.setConnArgIndex(2);
+                    }
                     record.setConnBeginIndex(begIndex);
-
-                    results.add(record);
                 }
                 }catch(Exception e){ e.printStackTrace();}
             }
@@ -482,27 +472,6 @@ public class Resource
         }
     }
 
-    /**
-     * 加载常见连词在同义词词林中的标签组合
-     */
-    /**
-    public static void LoadConnCatgInSymCiLin() throws IOException
-    {
-        if( ConnTagInSymCiLin.size() > 10 ) return;
-
-        String fPath = "/resource/dictionary/ConnWordCagInSymCiLin.txt";
-        System.out.println("[--Info--] Loading ConnWord Tag In SymWord CiLin From: " + fPath);
-
-        ArrayList<String> lines = new ArrayList<String>();
-        util.readFileToLines(fPath, lines);
-
-        for(String line:lines)
-        {
-            String[] lists = line.split("\t");
-            ConnTagInSymCiLin.put( lists[0], Integer.valueOf(lists[1].trim()) );
-        }
-    }
-    **/
 
     /**
      * 加载在同义词词林中出现的所有标签，这样就可以为每个词找到一个标签。主要是为了减少数据稀疏性。
@@ -563,6 +532,25 @@ public class Resource
 
         for(Map.Entry<String, Integer> entry:tags){
             ConnTagInSymCiLinSorted.add(entry.getKey());
+        }
+    }
+
+    /**加载关系列表，保存在sense.txt文件中，每行表示了一个关系编号和一个关系名称**/
+    public static void LoadSenseList() throws IOException
+    {
+        if( senseLists.size() > 5 ) return;
+        String fPath = "resource/Sense.txt";
+        System.out.println("[--Info--] Loading Sense List from [" + fPath + "]" );
+
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLines(fPath, lines);
+
+        for( String line : lines )
+        {
+            if( line.trim().length() == 0 ) continue;
+
+            String[] lists = line.split("\t");
+            senseLists.put(lists[0].trim(), lists[1].trim());
         }
     }
 

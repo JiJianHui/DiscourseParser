@@ -21,16 +21,13 @@ public class DSAWordDictItem
     private Integer expNum;
     private Integer impNum;
 
-    private Integer expKind;
-    private Integer impKind;
+    private boolean isParallelWord; //是否是并列关联词：虽然...但是
 
     private HashMap<String, Integer> expRelations;
     private HashMap<String, Integer> impRelations;
 
-
     private double mostExpProbality;
     private double mostImpProbality;
-
     private String mostExpProbalityRelNO;
     private String mostImpProbalityRelNO;
 
@@ -44,14 +41,14 @@ public class DSAWordDictItem
 
         this.expNum  = 0;
         this.impNum  = 0;
-        this.expKind = 0;
-        this.impKind = 0;
 
         this.mostExpProbalityRelNO = Constants.DefaultRelNO;
         this.mostImpProbalityRelNO = Constants.DefaultRelNO;
 
         this.expRelations = new HashMap<String, Integer>();
         this.impRelations = new HashMap<String, Integer>();
+
+        this.isParallelWord = content.contains(";");
     }
 
     /**
@@ -67,9 +64,6 @@ public class DSAWordDictItem
 
         this.expNum = Integer.valueOf(lists[2]);
         this.impNum = Integer.valueOf(lists[3]);
-
-        this.expKind = Integer.valueOf(lists[4]);
-        this.impKind = Integer.valueOf(lists[5]);
 
         this.expRelations = new HashMap<String, Integer>();
         this.impRelations = new HashMap<String, Integer>();
@@ -295,17 +289,11 @@ public class DSAWordDictItem
         return this.expRelations.size();
     }
 
-    public void setExpKind(Integer expKind) {
-        this.expKind = expKind;
-    }
 
     public Integer getImpKind() {
         return this.impRelations.size();
     }
 
-    public void setImpKind(Integer impKind) {
-        this.impKind = impKind;
-    }
 
     public HashMap<String, Integer> getExpRelations() {
         return expRelations;
@@ -344,15 +332,12 @@ public class DSAWordDictItem
         return mostExpProbality;
     }
 
-    public void setMostExpProbality(double mostExpProbality) {
-        this.mostExpProbality = mostExpProbality;
-    }
 
     public double getMostImpProbality() {
         return mostImpProbality;
     }
 
-    public void setMostImpProbality(double mostImpProbality) {
-        this.mostImpProbality = mostImpProbality;
+    public boolean isParallelWord() {
+        return isParallelWord;
     }
 }

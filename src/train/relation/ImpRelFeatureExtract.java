@@ -8,6 +8,7 @@ import entity.train.SenseRecord;
 import syntax.PhraseParser;
 import org.dom4j.DocumentException;
 import resource.Resource;
+import train.word.ConnVectorItem;
 
 import java.io.IOException;
 import java.util.*;
@@ -78,11 +79,6 @@ public class ImpRelFeatureExtract
         }
 
         //将items转换为libsvm需要的格式，主要是将同义词标签进行转换
-        ArrayList<String> lines = new ArrayList<String>();
-
-        for(RelVectorItem item:items){
-            lines.add( item.toLineForLibsvm() );
-        }
 
         //将数据拆分为训练集和测试集并进行保存
         String trainPath = "data/relation/impRelTrainData.txt";
@@ -91,8 +87,19 @@ public class ImpRelFeatureExtract
         int allNum   = items.size();
         int trainNum = allNum / 5 * 4;
 
-        ArrayList<String> trainLines = new ArrayList<String>( lines.subList(0,trainNum) );
-        ArrayList<String> testLines  = new ArrayList<String>( lines.subList(trainNum, allNum) );
+        boolean[] exist =  util.getRandomArrays(allNum,trainNum);
+
+        ArrayList<String> trainLines = new ArrayList<String>( );
+        ArrayList<String> testLines  = new ArrayList<String>( );
+
+        for(int index = 0; index < allNum; index++)
+        {
+            RelVectorItem item  = items.get(index);
+            String line = item.toLineForLibsvm();
+
+            if( exist[index] ){trainLines.add(line);}
+            else{testLines.add(line);}
+        }
 
         util.writeLinesToFile(trainPath, trainLines);
         util.writeLinesToFile(testPath, testLines);

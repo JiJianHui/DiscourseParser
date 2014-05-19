@@ -1,6 +1,7 @@
 package entity.recognize;
 
 import common.Constants;
+import resource.Resource;
 
 import java.util.ArrayList;
 
@@ -50,7 +51,9 @@ public class DSAParagraph
             {
                 String type = relation.getRelType(), NO = relation.getRelNO();
                 result = result + "<InterSense id=\"" + curSentence.getId() + "\"";
-                result = result + " type=\"" + type + "\" NO=\"" + NO + "\">";
+                result = result + " type=\"" + type + "\" NO=\"" + NO + "\"";
+                result = result + " content=\""+ Resource.senseLists.get(NO) + "\">";
+
                 result = result + "<arg1>" + relation.getArg1Content() + "</arg1>";
                 result = result + "<arg2>" + relation.getArg2Content() + "</arg2>";
 
@@ -80,7 +83,8 @@ public class DSAParagraph
         for( DSACrossRelation crossRelation:this.crossRelations )
         {
             result = result + "<CrossSense type=\"" + crossRelation.relType
-                    + "\" NO=\"" + crossRelation.relNO + "\">";
+                    + "\" NO=\"" + crossRelation.relNO + "\"";
+            result = result + " content=\""+ Resource.senseLists.get(crossRelation.relNO) + "\">";
 
             result = result + "<arg1 sentID=\"" + crossRelation.arg1SentID + "\">"
                     + crossRelation.arg1Content + "</arg1>";

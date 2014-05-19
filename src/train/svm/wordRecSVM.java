@@ -15,9 +15,9 @@ public class wordRecSVM
     private  svm_model svmModel;
 
     //只需要对前6个元素进行缩放，其余的不需要
-    public String scaleRulePath  = "./data/word/scaleRule.txt";
-    public String trainDataPath  = "./data/word/wordTrainData.txt";
-    public String testDataPath  = "./data/word/wordTestData.txt";
+    public String scaleRulePath  = "data/word/scaleRule.txt";
+    public String trainDataPath  = "data/word/wordTrainData.txt";
+    public String testDataPath  = "data/word/wordTestData.txt";
 
     public String scaleTrainDataPath;
     public String scaleTestDataPath;
@@ -29,7 +29,7 @@ public class wordRecSVM
     public wordRecSVM() throws IOException
     {
         ArrayList<String> lines = new ArrayList<String>();
-        util.readFileToLines(scaleRulePath, lines, 6);
+        util.readFileToLines(scaleRulePath, lines, 8);
 
         for(int index = 0; index < 6; index++)
         {
@@ -80,7 +80,7 @@ public class wordRecSVM
         this.scaleData();
 
         //训练模型
-        String[] trainArgs = {"-c", "2048", "-g", "0.0078125","-w1","3","-w0","1", scaleTrainDataPath};
+        String[] trainArgs = {"-c", "2.0", "-g", "0.5","-w1","2","-w0","1", scaleTrainDataPath};
         this.modelFilePath = svm_train.main(trainArgs);
 
         //测试模型准确率

@@ -26,7 +26,7 @@ public class PhraseParser
 
     public PhraseParser()
     {
-        String[] options = { "-maxLength", "500","-MAX_ITEMS","500000"};
+        String[] options = { "-maxLength", "600","-MAX_ITEMS","600000"};
         String   grammar = "edu/stanford/nlp/models/lexparser/chineseFactored.ser.gz";
         stanfordParser   = LexicalizedParser.loadModel(grammar, options);
 

@@ -35,10 +35,33 @@ public class Test
         //Test.testRemoveAllBlankAndPron();
         //Test.testSameWordsNum();
         //Test.testTreeEyee();
-        Integer a = null;
-        double b = a;
-        System.out.println(a);
-        System.out.println(b);
+        //Test.testJavaFormatOut();
+        //Test.checkChar();
+        Test.checkFile();
+    }
+
+    public static void checkChar()
+    {
+        String str = "我是Automan Dytang ,，奥特曼。";
+
+        for(int i = 0 ;i<str.length();i++)
+        {
+            char ch = str.charAt(i);
+            if( (ch >= '\u4e00' && ch <= '\u9fa5') ||(ch >= '\uf900' && ch <='\ufa2d') )
+            {
+                System.out.println(ch + "是中文");
+            }
+            else
+            {
+                System.out.println(ch + "不是中文");
+            }
+        }
+    }
+
+    public static void testJavaFormatOut()
+    {
+        double accuray = 15.8125364;
+        System.out.format("accury: %.2f", accuray);
     }
 
     public static void testTreeEyee()
@@ -294,5 +317,37 @@ public class Test
         }
 
         return result;
+    }
+
+    public static void checkFile() throws IOException {
+        String onlyWordPath = "resource/onlyWord.txt";
+        String p3WordPath = "resource/p3Word(Filtered).txt";
+
+        ArrayList<String> p3Lines   = new ArrayList<String>();
+        ArrayList<String> onlyLines = new ArrayList<String>();
+
+        util.readFileToLines(p3WordPath,p3Lines);
+        util.readFileToLines(onlyWordPath, onlyLines);
+
+        HashSet<String> onlyWords = new HashSet<String>();
+        for(String line:onlyLines)
+        {
+            String[] lists = line.split("\t");
+            onlyWords.add(lists[0]);
+        }
+
+        ArrayList<String> filterLines = new ArrayList<String>();
+
+        for(String line:p3Lines)
+        {
+            String[] lists = line.split("\t");
+            String word = lists[0];
+
+            if( onlyWords.contains(word) ) filterLines.add(line);
+        }
+
+        String fPath = "resource/allWordInP3.txt";
+
+        util.writeLinesToFile(fPath, filterLines);
     }
 }

@@ -2,6 +2,7 @@ package common;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -49,13 +50,6 @@ public class Constants
     public static String P3_Ending = ".p3";
     public static String P1_Ending = ".p1";
 
-    //显式连词的词典位置，只保存了常见的连词词典，并没有保存其它信息
-    public static String ExpConWord_Dict_Path      = "resource/singWord.txt";
-    public static String ExpParallelWord_Dict_Path = "resource/unParallelWord.txt";
-
-    //保存了连词和sense的对应词典，词典中保存了每个连词的详细信息：对应的关系列表。
-    public static String Connective_Relation_Path = "resource/p3Word(Filtered).txt";
-
     //最原始的标注语料集合，主要用于基础的数据分析
     public static String Raw_Annotation_Data = "F:\\Corpus Data\\check";
 
@@ -79,15 +73,8 @@ public class Constants
     public static Integer ConnRecoganize_ML   = 1;
     public static Integer ConnRecoganize_Rule = 0;
 
-    public static String  Libsvm_Origin_Data_Path = "data/word/libsvmOriginData.txt";
-
-    public static String  Libsvm_Train_Data_Path  = "data/word/libsvmTrainData.txt";
-    public static String  Libsvm_Test_Data_Path  = "data/word/libsvmTestData.txt";
-
-    public static String  Libsvm_Train_Scale_Data_Path  = "data/word/libsvmTrainData_scale.txt";
-    public static String  Libsvm_Test_Scale_Data_Path  = "data/word/libsvmTestData_scale.txt";
-
-    public static String Libsvm_Result_Path = "data/word/libsvmResult.txt";
+    public static Integer Label_Inter_ConnWord = 1;
+    public static Integer Label_Cross_ConnWord = 2;
 
     //抽取样本时需要过滤掉的词性:人名+地名+机构名 + 位置名 + 代词 + 外文次 + 标点共七种
     //public static String[] Ignore_PosTags = {"nh", "ni", "nl", "ns", "r", "ws", "wp"};

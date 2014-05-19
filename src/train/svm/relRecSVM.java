@@ -204,8 +204,8 @@ public class relRecSVM
             int resultLabel = Double.valueOf(resultLines.get(index).trim()).intValue();
 
             allNum++;
-            if( testLabel != 0 ) recNum++;
-            if( testLabel != 0 && testLabel == resultLabel) recCorrect++;
+            if( testLabel == 4 ) recNum++;
+            if( testLabel == 4 && testLabel == resultLabel) recCorrect++;
 
         }
 
@@ -213,11 +213,11 @@ public class relRecSVM
         double r = recNum / allNum ;
         double f = 2 * p * r / (p + r);
 
-        System.out.println("P: " + p + "\t R: " + r + "\t F: " + f);
+        System.out.format("P: %.3f R: %.3f F: %.3f\n", p, r, f);
     }
 
     private static int atoi(String s){ return Integer.parseInt(s); }
-    private static double atof(String s) { return Double.valueOf(s).doubleValue(); }
+    private static double atof(String s) { return Double.valueOf(s); }
 
     public static void main(String[] args) throws IOException
     {
