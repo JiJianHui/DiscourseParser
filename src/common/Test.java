@@ -38,6 +38,8 @@ public class Test
         //Test.testJavaFormatOut();
         //Test.checkChar();
         Test.checkFile();
+        String relNO  = "3-5";
+        System.out.println(relNO.length() == 1 ? Integer.valueOf(relNO) : Integer.valueOf(relNO.substring(0,1)) );
     }
 
     public static void checkChar()

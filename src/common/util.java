@@ -642,4 +642,40 @@ public class util
                 testDatas.add( lines.get(index) );
         }
     }
+
+    /**判断两个记录是否是同一个记录，主要是根据两个记录的相识度来计算**/
+    public static boolean isTheSameRecord(SenseRecord sour, SenseRecord dest)
+    {
+        boolean result  = false;
+
+        if( !sour.getfPath().equals(dest.getfPath()) ) return result;
+
+        String sourText = removeAllBlankAndProun( sour.getText() );
+        String destText = removeAllBlankAndProun( dest.getText() );
+
+        int    sourLen  = sourText.length(), destLen = destText.length();
+
+        //确保dest是最长的那位
+        if( destLen < sourLen )
+        {
+            String temp = destText;
+            destText    = sourText;
+            sourText    = temp;
+        }
+
+        sourLen = sourText.length();
+
+        //判断是否是同一个记录或者是同一个记录的两个记录
+        if( destText.equalsIgnoreCase(sourText) ) {
+            result = true;
+        }else if( destText.contains(sourText) ){
+            result = true;
+        }else{
+            //计算两个文本的相似度
+            int sameNum = countSameCharatersNum(sourText, destText);
+            if( Math.abs(sameNum - sourLen) < 3 ) result = true;
+        }
+
+        return result;
+    }
 }

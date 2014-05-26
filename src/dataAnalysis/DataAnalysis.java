@@ -196,6 +196,8 @@ public class DataAnalysis
         System.out.println("P3 Inter Relation: Exp:" + expInstanceP3  + " Imp: " + impInstanceP3);
     }
 
+
+
     /**计算每个连词在p2和p3中的分布，即：计算一个连词在句间关系和句内关系中分别出现的次数。**/
     public void countConnectiveInP2AndP3() throws IOException, DocumentException
     {
@@ -266,6 +268,8 @@ public class DataAnalysis
 
     }
 
+
+
     /**判断是否有连词漏掉了，因为连词词表是过滤过的。**/
     public void checkData() throws IOException, DocumentException
     {
@@ -284,6 +288,103 @@ public class DataAnalysis
 
     }
 
+
+
+    /**分析语料中的关系是否存在重叠的现象。**/
+    public void countRel() throws DocumentException
+    {
+        Resource.LoadRawRecord();
+        int[][] trans = new int[5][5];
+
+        int expAndExp = 0, expAndImp = 0; int impAndExp = 0, impAndImp = 0;
+        for( int i = 0; i < 5; i++ ) for( int j = 0; j < 5; j++ ) trans[i][j] = 0;
+
+        System.out.println(Resource.Raw_Train_Annotation_p2.size());
+
+        for( int index = 1; index < Resource.Raw_Train_Annotation_p2.size(); index++ )
+        {
+            SenseRecord curRecord  = Resource.Raw_Train_Annotation_p2.get(index);
+            SenseRecord prevRecord = Resource.Raw_Train_Annotation_p2.get(index - 1);
+
+            //System.out.println(prevRecord.getAnnotation() + "\t" + prevRecord.getRelNO());
+            //System.out.println(curRecord.getAnnotation() + "\t" + curRecord.getRelNO());
+
+            //判断是否是同一个Record,以及是否是同一篇文章的Record
+            if( util.isTheSameRecord(curRecord, prevRecord) ) continue;
+            if( !curRecord.getfPath().equals(prevRecord.getfPath()) ) continue;
+
+            //判断两个Record是否是相邻的Record，以便统计关系之间是否存在序列标注的问题。
+            int adjacentType = this.adjacentTypeWithPrevRecord(curRecord, prevRecord);
+
+            if( adjacentType != 0 )
+            {
+                String curType  = curRecord.getType(),  curRelID  = curRecord.getRelNO();
+                String prevType = prevRecord.getType(), prevRelID = prevRecord.getRelNO();
+
+                //count the probality of the next explict
+                if( prevType.equalsIgnoreCase(Constants.EXPLICIT) )
+                {
+                    if( curType.equalsIgnoreCase(Constants.EXPLICIT) ) expAndExp++;
+                    else expAndImp++;
+                }
+                else
+                {
+                    if( curType.equalsIgnoreCase(Constants.EXPLICIT) ) impAndExp++;
+                    else impAndImp++;
+                }
+
+                //计算在某一关系之后出现另一种关系的概率: 转移矩阵
+                int prevSenseNO = prevRelID.length() == 1 ? Integer.valueOf(prevRelID) : Integer.valueOf(prevRelID.substring(0,1));
+                int curSenseNO  = curRelID.length() == 1 ? Integer.valueOf(curRelID) : Integer.valueOf(curRelID.substring(0,1));
+
+                trans[prevSenseNO][curSenseNO] = trans[prevSenseNO][curSenseNO] + 1;
+
+                //debug:
+                if( prevSenseNO == 1 && curSenseNO == 1){
+                    System.out.println(curRecord.getfPath());
+                    System.out.println(curRecord.getAnnotation());
+                }
+            }
+        }
+
+        System.out.println("Exp-Exp: " + expAndExp + " Exp-Imp: " + expAndImp);
+        System.out.println("Imp-Exp: " + impAndExp + " Imp-Imp: " + impAndImp);
+
+        for(int i = 1; i < 5; i++ )
+        {
+            for(int j = 1; j< 5; j++)
+            {
+                System.out.print(trans[i][j] + "\t");
+                //System.out.print(i + "-" + j + ": " + trans[i][j] + " ");
+            }
+            System.out.print("\n");
+        }
+    }
+
+    /***返回两个Record的位置关系， 0：代表没有关系。1: 代表共用了一个Arg属于嵌套ABBC类型
+     * 2: 代表了两个Record属于直接顺序链接**/
+    private int adjacentTypeWithPrevRecord(SenseRecord cur, SenseRecord prev)
+    {
+        int result = 0;
+
+        int prevEnd = prev.getArg2End();
+        int curBeg  = cur.getArg1Beg(), curEnd = cur.getArg2End();
+
+        //prev和cur共同使用了中间的句子，那么prevEnd和curBeg应该重合
+        if( prevEnd > curBeg + cur.getArg1().length() / 2 - 3 && prevEnd < curEnd ) result = 1;
+
+        //直接顺序链接类型，那么curBeg应该比prevEnd大一点或者小一点
+        if( prevEnd <= curBeg && prevEnd > curBeg - 3 ) result = 2;
+
+        return result;
+    }
+
+    /**计算连词在实际语料中使用的频率**/
+    public void countConnProbality()
+    {
+
+    }
+
     public static void main(String[] args) throws IOException, DocumentException
     {
         DataAnalysis analysis = new DataAnalysis();
@@ -291,6 +392,7 @@ public class DataAnalysis
         //analysis.countRecognizeSenseBaseonExpWord();
         //analysis.countConnectiveInP2AndP3();
         //analysis.countExpAndImpDistibutionInFile();
-        analysis.checkData();
+        //analysis.checkData();
+        //analysis.countRel();
     }
 }

@@ -3,7 +3,7 @@ package dataAnalysis;
 import common.util;
 
 /**
- * RawRecord主要是用来封装原始标注信息的，这样有助于方便程序的调用.
+ * RawRecord主要是用来封装原始标注信息的，这样有助于方便程序的调用.[旧版本的Record]
  * User: Ji JianHui
  * Time: 2014-02-26 10:03
  * Email: jhji@ir.hit.edu.cn

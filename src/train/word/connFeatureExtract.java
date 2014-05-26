@@ -84,8 +84,8 @@ public class connFeatureExtract
             SenseRecord prev = index > 0 ? records.get(index - 1) : null;
             SenseRecord next = index < size-1 ? records.get(index + 1) : null;
 
-            boolean isSameWithPrev = prev != null && this.isTheSameRecord(record, prev);
-            boolean isSameWithNext = next != null && this.isTheSameRecord(record, next);
+            boolean isSameWithPrev = prev != null && util.isTheSameRecord(record, prev);
+            boolean isSameWithNext = next != null && util.isTheSameRecord(record, next);
 
             String prevConn = (prev == null) ? null : prev.getConnective();
             String nextConn = (next == null) ? null : next.getConnective();
@@ -135,36 +135,6 @@ public class connFeatureExtract
         }
     }
 
-    /**判断两个记录是否是同一个记录，主要是根据两个记录的相识度来计算**/
-    public boolean isTheSameRecord(SenseRecord sour, SenseRecord dest)
-    {
-        boolean result  = false;
-        String sourText = util.removeAllBlankAndProun( sour.getText() );
-        String destText = util.removeAllBlankAndProun( dest.getText() );
-        int    sourLen  = sourText.length(), destLen = destText.length();
-
-        //确保dest是最长的那位
-        if( destLen < sourLen )
-        {
-            String temp = destText;
-            destText    = sourText;
-            sourText    = temp;
-        }
-        sourLen = sourText.length();
-
-        //判断是否是同一个记录或者是同一个记录的两个记录
-        if( destText.equalsIgnoreCase(sourText) ) {
-            result = true;
-        }else if( destText.contains(sourText) ){
-            result = true;
-        }else{
-            //计算两个文本的相似度
-            int sameNum = util.countSameCharatersNum(sourText, destText);
-            if( Math.abs(sameNum - sourLen) < 3 ) result = true;
-        }
-
-        return result;
-    }
 
     /**抽取一个句子中的某一个特定单词的特征。**/
     public ConnVectorItem getFeatureLine(Term wordItem, String sentContent)

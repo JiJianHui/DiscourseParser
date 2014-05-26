@@ -69,14 +69,9 @@ public class DSASentence
         String[] words = word.split(";");
 
         //if( conWords.size() - words.length > 1 ) return false;
-
-
-        for(int index = 0; index < words.length; index++)
+        for( String curWord : words )
         {
-            String curWord = words[index];
-
             result = false;
-
             for(DSAConnective curConn : conWords)
             {
                 if( curConn.getContent().equalsIgnoreCase(curWord) )
@@ -85,7 +80,7 @@ public class DSASentence
                 }
             }
 
-            if(result == false)
+            if( !result )
             {
                 result = false;
                 break;

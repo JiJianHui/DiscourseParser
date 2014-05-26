@@ -208,12 +208,11 @@ public class Resource
 
         for(String fPath:files)
         {
-            String content = util.readFileToString(fPath).replaceAll("\r\n", "");
-            Document domObj = DocumentHelper.parseText(content);
-
+            String content   = util.readFileToString(fPath).replaceAll("\r\n", "");
+            Document domObj  = DocumentHelper.parseText(content);
             Element rootNode = domObj.getRootElement();
 
-            HashSet<SenseRecord> results = new HashSet<SenseRecord>();
+            ArrayList<SenseRecord> results = new ArrayList<SenseRecord>();
 
             for(Iterator ite = rootNode.elementIterator(); ite.hasNext();)
             {
@@ -222,8 +221,8 @@ public class Resource
 
                 if( sentNode.getName().equals("Sense") )
                 {
-                    String type  = sentNode.attribute("type").getText();
-                    String relNO = sentNode.attribute("RelNO").getText();
+                    String type    = sentNode.attribute("type").getText();
+                    String relNO   = sentNode.attribute("RelNO").getText();
 
                     String source  = sentNode.element("Source").getText();
                     String conWord = sentNode.element("Connectives").element("Content").getText();
@@ -236,10 +235,10 @@ public class Resource
                     if( conWord.equalsIgnoreCase("null") ) continue;
                     if( wSpan.equalsIgnoreCase("null") ) continue;
 
-                    if( conWord.equalsIgnoreCase("结果") ) {
-                        System.out.println(fPath);
-                        System.out.println(annot);
-                    }
+                    //if( conWord.equalsIgnoreCase("结果") ) {
+                    //    System.out.println(fPath);
+                    //    System.out.println(annot);
+                    //}
 
                     int[] arg1Position = new int[2];
                     int[] arg2Position = new int[2];
@@ -247,7 +246,6 @@ public class Resource
                     String[] lists  = annot.split(" ");
                     arg1Position[0] = Integer.valueOf(lists[0]);
                     arg1Position[1] = Integer.valueOf(lists[1]);
-
                     arg2Position[0] = Integer.valueOf(lists[2]);
                     arg2Position[1] = Integer.valueOf(lists[3]);
 
@@ -269,11 +267,13 @@ public class Resource
                     SenseRecord record = new SenseRecord(type, relNO);
 
                     record.setText( source );
-                    record.setConnective(conWord);
-                    record.setArg1(arg1);
-                    record.setArg2(arg2);
-                    record.setAnnotation(annot);
                     record.setfPath(fPath);
+                    record.setConnective(conWord);
+                    record.setAnnotation(annot);
+
+                    record.setArg1(arg1); record.setArg2(arg2);
+                    record.setArg1Beg(arg1Position[0]); record.setArg1End(arg1Position[1]);
+                    record.setArg2Beg(arg2Position[0]); record.setArg2End(arg2Position[1]);
 
                     results.add(record);
 

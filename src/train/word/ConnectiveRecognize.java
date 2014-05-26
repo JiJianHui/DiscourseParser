@@ -4,7 +4,6 @@ import common.Constants;
 import common.util;
 import entity.recognize.DSAConnective;
 import entity.recognize.DSASentence;
-import entity.Recognize;
 import entity.train.SenseRecord;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -30,6 +29,7 @@ public class ConnectiveRecognize
         this.sentences = new ArrayList<DSASentence>();
 
         Resource.LoadRawRecord();
+        Resource.LoadWordRelDict();
         Resource.LoadExpConnectivesDict();
         Resource.LoadLtpXMLResultSentID();
     }
@@ -40,8 +40,6 @@ public class ConnectiveRecognize
     public void connectiveRecognize() throws Exception
     {
         System.out.println("[--Info--] Begining to Recognize Connective Word in Sentence");
-
-        Recognize wordRecognize = new Recognize();
 
         for(SenseRecord record : Resource.Raw_Train_Annotation_p3)
         {
@@ -54,50 +52,8 @@ public class ConnectiveRecognize
             this.findConnectiveWithRule(sentence);
 
             //计算tt和ft的值
-            if( sentence.getConWords().size() > 0 )
-            {
-                if( sentence.containWord( record.getConnective() ) )
-                {
-                    wordRecognize.tt++;
-                }
-                else
-                {
-                    wordRecognize.ft++;
-                }
-            }
-            else
-            {
-                if( record.getConnective().length() > 0 && !record.getConnective().equalsIgnoreCase("NULL") )
-                {
-                    wordRecognize.ff++;
-
-                    System.out.println("-------没有识别出连词--------");
-                    System.out.println( sentence.getContent() );
-                    System.out.println( sentence.getConnWordContent() );
-                    System.out.println( record.getAnnotation() );
-                    System.out.println( record.getConnective() );
-                }
-                else
-                {
-                    wordRecognize.tf++;
-                }
-            }
-
         }
 
-        wordRecognize.pRate = wordRecognize.tt * 1.0 / (wordRecognize.tt + wordRecognize.ft);
-        wordRecognize.rRate = wordRecognize.tt * 1.0 / (wordRecognize.tt + wordRecognize.ff);
-        wordRecognize.fRate = (2 * wordRecognize.pRate * wordRecognize.rRate) / (wordRecognize.pRate + wordRecognize.rRate);
-
-        System.out.println("tt: " + wordRecognize.tt);
-        System.out.println("ft: " + wordRecognize.ft);
-
-        System.out.println("tf: " + wordRecognize.tf);
-        System.out.println("ff: " + wordRecognize.ff);
-
-        System.out.println("P: " + wordRecognize.pRate );
-        System.out.println("R: " + wordRecognize.rRate );
-        System.out.println("F: " + wordRecognize.fRate );
     }
 
     public void test() throws Exception
