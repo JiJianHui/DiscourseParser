@@ -5,6 +5,9 @@ import common.util;
 import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.trees.TypedDependency;
 import entity.train.SenseRecord;
+import entity.train.WordVector;
+import org.ansj.domain.Term;
+import org.ansj.recognition.NatureRecognition;
 import syntax.PhraseParser;
 import org.dom4j.DocumentException;
 import resource.Resource;
@@ -35,7 +38,8 @@ public class ImpRelFeatureExtract
 
     public ImpRelFeatureExtract()throws DocumentException, IOException
     {
-        Resource.LoadRawRecord();
+        if( Constants.SenseVersion == Constants.NewSenseVersion ) Resource.LoadRawRecord();
+        if( Constants.SenseVersion == Constants.OldSenseVersion ) Resource.LoadOldRawRecord();
 
         Resource.LoadSentimentDict();
         Resource.LoadNegationDict();
@@ -49,11 +53,17 @@ public class ImpRelFeatureExtract
         stanfordParser = new PhraseParser();
     }
 
+    public ImpRelFeatureExtract(boolean wordVector)
+    {
+
+    }
+
     /**为了训练隐式关系识别的模型，抽取对应的特征数据。**/
     public void run() throws IOException
     {
         //获取原始标注语料中的隐式关系的标注实例
         ArrayList<RelVectorItem> items = new ArrayList<RelVectorItem>();
+
         for(SenseRecord curRecord:Resource.Raw_Train_Annotation)
         {
             String relType       = curRecord.getType();
@@ -73,6 +83,14 @@ public class ImpRelFeatureExtract
                 item.arg1Content   = arg1Content;
                 item.arg2Content   = arg2Content;
 
+                if( Constants.SenseVersion == Constants.OldSenseVersion )
+                {
+                    //1: 过滤掉隐式关系中的1时序和3条件因为太少了
+                    //if( item.relNO.startsWith("1") || item.relNO.startsWith("3") ) continue;
+                    //2: 只考虑隐式句间关系1师兄和3条件, 计算两者的分类准确率
+                    //if( !item.relNO.startsWith("1") && !item.relNO.startsWith("3") ) continue;
+                }
+
                 items.add(item);
             }
             catch (OutOfMemoryError e){e.printStackTrace();}
@@ -84,6 +102,12 @@ public class ImpRelFeatureExtract
         String trainPath = "data/relation/impRelTrainData.txt";
         String testPath  = "data/relation/impRelTestData.txt";
 
+        if( Constants.SenseVersion == Constants.OldSenseVersion )
+        {
+            trainPath = "data/relation/oldImpRelTrainData.txt";
+            testPath  = "data/relation/oldImpRelTestData.txt";
+        }
+
         int allNum   = items.size();
         int trainNum = allNum / 5 * 4;
 
@@ -92,7 +116,7 @@ public class ImpRelFeatureExtract
         ArrayList<String> trainLines = new ArrayList<String>( );
         ArrayList<String> testLines  = new ArrayList<String>( );
 
-        for(int index = 0; index < allNum; index++)
+        for( int index = 0; index < allNum; index++ )
         {
             RelVectorItem item  = items.get(index);
             String line = item.toLineForLibsvm();
@@ -322,11 +346,150 @@ public class ImpRelFeatureExtract
 
      **/
 
+    /*****
+     * 使用词向量来识别隐式句间关系
+     */
+    public void regImpRelWithWordVector() throws IOException, DocumentException
+    {
+        Resource.LoadOldRawRecord();
+        Resource.LoadWordVector();
+        Resource.LoadStopWords();
+
+        ArrayList<String> lines = new ArrayList<String>();
+
+        for( SenseRecord curRecord : Resource.Raw_Train_Annotation )
+        {
+            String relType       = curRecord.getType();
+            String relNO         = curRecord.getRelNO();
+
+            String arg1Content   = curRecord.getArg1();
+            String arg2Content   = curRecord.getArg2();
+
+            if( relType.equalsIgnoreCase(Constants.EXPLICIT) ) continue;
+            if(relNO.startsWith("1") || relNO.startsWith("3")) continue;
+            if( arg1Content.length() > 400 || arg2Content.length() > 400 ) continue;
+
+            //进行分词来获取各个词的语义角色
+            List<Term> arg1Words = this.getPosTag(arg1Content);
+            List<Term> arg2Words = this.getPosTag(arg2Content);
+
+            //计算arg1和arg2的词向量
+            String[] arg1Lists = arg1Content.split(" ");
+            String[] arg2Lists = arg2Content.split(" ");
+
+            WordVector arg1Vector = new WordVector();
+            WordVector arg2Vector = new WordVector();
+
+            for(String curWord:arg1Lists)
+            {
+                WordVector curWordVector = Resource.wordVectors.get(curWord);
+
+                if(  curWordVector == null ) continue;
+                if( Resource.Stop_Words.contains(curWord) ) continue;
+
+                int weight = 1;
+                for( Term curTerm:arg1Words )
+                {
+                    if( curTerm.getName().equals(curWord) )
+                    {
+                        String pos = curTerm.getNatrue().natureStr;
+                        if( pos.startsWith("a") ) weight = 2;  //形容词
+                        if( pos.startsWith("u") ) weight = 2;  //语气词
+                        if( pos.startsWith("n") ) weight = 3;   //名词
+                        if( pos.startsWith("v") ) weight = 4;   //动词
+                    }
+                }
+
+                for(int i = 0; i < weight; i++) arg1Vector.addOtheVector(curWordVector);
+            }
+
+            for(String curWord:arg2Lists)
+            {
+                WordVector curWordVector = Resource.wordVectors.get(curWord);
+
+                if(  curWordVector == null ) continue;
+                if( Resource.Stop_Words.contains(curWord) ) continue;
+
+                int weight = 1;
+                for( Term curTerm : arg2Words )
+                {
+                    if( curTerm.getName().equals(curWord) ){
+                        String pos = curTerm.getNatrue().natureStr;
+                        if( pos.startsWith("a") ) weight = 2;  //形容词
+                        if( pos.startsWith("u") ) weight = 2;  //语气词
+                        if( pos.startsWith("n") ) weight = 3;   //名词
+                        if( pos.startsWith("v") ) weight = 4;   //动词
+                    }
+                }
+
+                for(int i = 0; i < weight; i++) arg2Vector.addOtheVector(curWordVector);
+            }
+
+            //arg1Vector.minusOtherVector(arg2Vector);
+
+            //生成特征文件行
+            String line = String.valueOf( relNO.charAt(0) );
+
+            for( int index = 0; index < 50; index++ )
+            {
+                line = line + " " + (index+1) + ":" + ( arg1Vector.wVector[index] / arg1Words.size() );
+            }
+            for( int index = 0; index < 50; index++ )
+            {
+                line = line + " " + (index + 51) + ":" + ( arg2Vector.wVector[index] / arg2Words.size() );
+            }
+
+            lines.add(line);
+        }
+
+        //将items转换为libsvm需要的格式，主要是将同义词标签进行转换
+
+        //将数据拆分为训练集和测试集并进行保存
+        String trainPath = "data/relation/impRelTrainData.wordVector.txt";
+        String testPath  = "data/relation/impRelTestData.wordVector.txt";
+
+        if( Constants.SenseVersion == Constants.OldSenseVersion )
+        {
+            trainPath = "data/relation/oldImpRelTrainData.wordVector.txt";
+            testPath  = "data/relation/oldImpRelTestData.wordVector.txt";
+        }
+
+        int allNum   = lines.size();
+        int trainNum = allNum / 5 * 4;
+
+        boolean[] exist =  util.getRandomArrays(allNum,trainNum);
+
+        ArrayList<String> trainLines = new ArrayList<String>( );
+        ArrayList<String> testLines  = new ArrayList<String>( );
+
+        for( int index = 0; index < allNum; index++)
+        {
+            String line = lines.get(index);
+
+            if( exist[index] ) trainLines.add(line);
+            else testLines.add(line);
+        }
+
+        util.writeLinesToFile(trainPath, trainLines);
+        util.writeLinesToFile(testPath, testLines);
+    }
+
+    private List<Term> getPosTag( String arg)
+    {
+        //不需要分词, 已经分好词的结果，那么我们需要词性标注的结果
+        List<String> lists = Arrays.asList( arg.split(" ") );
+
+        List<Term> words = NatureRecognition.recognition(lists, 0) ;
+
+        return  words;
+    }
+
     public static void main(String[] args) throws IOException, DocumentException
     {
-        ImpRelFeatureExtract relFeatureExtract = new ImpRelFeatureExtract();
+        ImpRelFeatureExtract relFeatureExtract = new ImpRelFeatureExtract(true);
 
-        relFeatureExtract.run();
+        //relFeatureExtract.run();
+        relFeatureExtract.regImpRelWithWordVector();
     }
 }
 

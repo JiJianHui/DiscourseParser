@@ -1,6 +1,7 @@
 import common.Constants;
 import entity.recognize.*;
 import entity.train.DSAWordDictItem;
+import entity.train.SenseRecord;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import train.svm.wordRecSVM;
 import train.svm.relRecSVM;
@@ -65,6 +66,12 @@ public class DiscourseParser
 
         //9: 加载关系列表，里面包含了关系编号和关系名称的对应。
         Resource.LoadSenseList();
+    }
+
+    /**供测试使用*/
+    public DiscourseParser(boolean debug)
+    {
+
     }
 
 
@@ -415,7 +422,6 @@ public class DiscourseParser
     }
 
     //-------------------------------2: EDU segment-----------------------------
-    //Segment a sentence into basic edus
 
     /**
      * 识别一个关系涉及到的Argument，可以考虑的是使用argument的标注信息来进行训练，
@@ -487,7 +493,7 @@ public class DiscourseParser
 
 
     /**
-     * 根据短语结构分析器来获取对应的短语结构。并以此来获取基本EDU
+     * 根据短语结构分析器来获取对应的短语结构。并以此来获取基本EDU。注意输入的的是预处理(分好词)之后的DSASentence
      * @param sentence
      */
     public boolean findArgumentWithPhraseParser(DSASentence sentence)
@@ -1077,7 +1083,16 @@ public class DiscourseParser
             String senseNO        = item.getMostExpProbalityRelNO();
 
             curRel.setRelType(Constants.EXPLICIT);
-            curRel.setRelNO( util.convertOldRelIDToNew(senseNO) );
+
+            if( Constants.SenseVersion == Constants.NewSenseVersion )
+            {
+                curRel.setRelNO( util.convertOldRelIDToNew(senseNO) );
+            }
+            else
+            {
+                curRel.setRelNO(senseNO);
+            }
+
             curRel.setProbality(probality);
         }
     }
@@ -1107,6 +1122,10 @@ public class DiscourseParser
                 DSAEDU curEDU  = rootEDU.getChildrenEDUS().get(index);
                 DSAEDU prevEDU = rootEDU.getChildrenEDUS().get(index - 1);
 
+                //判断孩子节点
+                this.getImpRelationInSubEDU(sentence, curEDU);
+                this.getImpRelationInSubEDU(sentence, prevEDU);
+
                 DSAInterRelation interRelation = new DSAInterRelation();
 
                 interRelation.setSentID(sentence.getId());
@@ -1129,6 +1148,40 @@ public class DiscourseParser
                 //sentence.getImpRelations().add(interRelation);
                 sentence.getRelations().add(interRelation);
             }
+        }
+    }
+
+    private void getImpRelationInSubEDU(DSASentence sentence, DSAEDU rootEDU) throws IOException
+    {
+        if( rootEDU.getChildrenEDUS().size() < 2 ) return;
+
+        //两两顺序配对产生候选
+        for(int index = 1; index < rootEDU.getChildrenEDUS().size(); index++)
+        {
+            DSAEDU curEDU  = rootEDU.getChildrenEDUS().get(index);
+            DSAEDU prevEDU = rootEDU.getChildrenEDUS().get(index - 1);
+
+            DSAInterRelation interRelation = new DSAInterRelation();
+
+            interRelation.setSentID(sentence.getId());
+            interRelation.setRelType(Constants.IMPLICIT);
+            interRelation.setRelNO(Constants.DefaultRelNO);
+
+            interRelation.setArg1Content(prevEDU.getContent());
+            interRelation.setArg2Content(curEDU.getContent());
+
+            //判断是否有关系
+            RelVectorItem item = impRelFeatureExtract.getFeatureLine(
+                    interRelation.getArg1Content(), interRelation.getArg2Content() );
+            item.relNO = Constants.DefaultRelNO;
+
+            int senseType = this.relationSVMMode.predict( item.toLineForLibsvm() );
+
+            if( senseType == 0 ) continue;
+
+            interRelation.setRelNO( String.valueOf(senseType) );
+            //sentence.getImpRelations().add(interRelation);
+            sentence.getRelations().add(interRelation);
         }
     }
 
@@ -1265,9 +1318,109 @@ public class DiscourseParser
     }
 
 
+     //-----------------------4：计算数据-----------------
+    /**计算EDU切分代码的准确度**/
+    public void countEDUAccuray() throws  DocumentException
+    {
+        Resource.LoadRawRecord();
+        this.phraseParser = new PhraseParser();
+
+        int allEDUNum = 0, arg1Correct = 0, arg2Correct = 0, argAllCorrect = 0;//完全相同的个数
+        int[] arg1CorrectInPercent   = new int[10];
+        int[] arg2CorrectInPercent   = new int[10];
+        int[] argAllCorrectInPercent = new int[10]; //部分相同的，相似比例在7成-8成-9成
+
+        DSAEDU rootEDU = null;
+        String text, arg1Content, arg2Content, arg1EDU, arg2EDU;
+
+        //随机获取200个来检查准确率， 用300个做缓冲
+        boolean[] exist = util.getRandomArrays(Resource.Raw_Train_Annotation_p3.size(), 500);
+
+        for(int index = 0; index < Resource.Raw_Train_Annotation_p3.size(); index++)
+        {
+            if( !exist[index] ) continue;
+
+            SenseRecord curRecord = Resource.Raw_Train_Annotation_p3.get(index);
+
+            text        = curRecord.getText();
+            arg1Content = curRecord.getArg1();
+            arg2Content = curRecord.getArg2();
+
+            if( curRecord.getType().equalsIgnoreCase(Constants.IMPLICIT) ) continue;
+            if( text.length() > Constants.Max_Sentence_Length + 100 ) continue;
+
+            //System.out.println(curRecord.getfPath());
+            //System.out.println(text);
+
+            //查看进行短语结构分析得到的两个Argument
+            DSASentence dsaSentence = new DSASentence(text);
+            dsaSentence.setSegContent(text);
+
+            try
+            {
+                boolean  eduResult = this.findArgumentWithPhraseParser(dsaSentence);
+                if( !eduResult ) continue;
+            }
+            catch(OutOfMemoryError e)
+            {
+                continue;
+            }
+
+            //获取自动分析的结果
+            rootEDU = dsaSentence.getRootEDU();
+
+            while( rootEDU.getChildrenEDUS().size() == 1 ) rootEDU = rootEDU.getChildrenEDUS().get(0);
+            if( rootEDU.getChildrenEDUS().size() < 2 ) continue;
+
+            allEDUNum = allEDUNum + 2;
+
+            arg1EDU = rootEDU.getChildrenEDUS().get(0).getContent();
+            arg2EDU = rootEDU.getChildrenEDUS().get(1).getContent();
+
+            //判断人工标注和自动分析的EDU的相似度
+            int sameNum1 = util.countSameCharatersNum(arg1Content, arg1EDU);
+            int sameNum2 = util.countSameCharatersNum(arg2Content, arg2EDU);
+
+            int length1 = arg1Content.length() > arg1EDU.length() ? arg1EDU.length():arg1Content.length();
+            int length2 = arg2Content.length() > arg2EDU.length() ? arg2EDU.length():arg2Content.length();
+
+            if( Math.abs(sameNum1 - length1) < 3 && Math.abs(arg1EDU.length() - arg1Content.length()) < 3 ) arg1Correct++;
+            if( Math.abs(sameNum2 - length2) < 3 && Math.abs(arg1EDU.length() - arg1Content.length()) < 3 ) arg2Correct++;
+
+
+            //超过7成相似，则不相似的占据3成
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.4) arg1CorrectInPercent[6]++;
+
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.3) arg1CorrectInPercent[7]++;
+            if( Math.abs(sameNum2 - length2) * 1.0 <= length2 * 0.3) arg2CorrectInPercent[7]++;
+
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.2) arg1CorrectInPercent[8]++;
+            if( Math.abs(sameNum2 - length2) * 1.0 <= length2 * 0.2) arg2CorrectInPercent[8]++;
+
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.1) arg1CorrectInPercent[9]++;
+            if( Math.abs(sameNum2 - length2) * 1.0 <= length2 * 0.1) arg2CorrectInPercent[9]++;
+
+             //输出自动分析结果和人工标注结果
+            System.out.println("-------------****************************----------------------");
+            System.out.println(text);
+            System.out.println("annote1: " + arg1Content);
+            System.out.println("myAuto1: " + arg1EDU);
+            System.out.println("annote2: " + arg2Content);
+            System.out.println("myAuto1: " + arg2EDU);
+        }
+
+        System.out.println("All EDU:" + allEDUNum );
+        System.out.println(" arg1Correct:" + arg1Correct + " arg2Correct:" + arg2Correct );
+
+        for(int index = 7; index < 10; index ++)
+        {
+            System.out.format("Same Percentnge %d0 percent arg1CorrectIn:%d arg2Correct:%d\n", index, arg1CorrectInPercent[index], arg2CorrectInPercent[index]);
+        }
+    }
+
     public static void main(String[] args) throws Exception
     {
-        DiscourseParser discourseParser = new DiscourseParser();
+        //DiscourseParser discourseParser = new DiscourseParser();
         //discourseParser.parseRawFile("E:\\Program\\Java\\DiscourseParser\\data\\TestSentenceSplit.txt");
         //discourseParser.connectiveRecognize();
 
@@ -1288,8 +1441,9 @@ public class DiscourseParser
 
         System.out.println(sentence.getConWords().get(0).getArg2EDU().getContent());
          **/
-        DiscourseParser dp = new DiscourseParser();
-        dp.parseRawFile(twoSentence, needSegment);
+        DiscourseParser dp = new DiscourseParser(true);
+        //dp.parseRawFile(twoSentence, needSegment);
+        dp.countEDUAccuray();
     }
 }
 

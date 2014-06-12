@@ -26,7 +26,11 @@ public class PhraseParser
 
     public PhraseParser()
     {
-        String[] options = { "-maxLength", "600","-MAX_ITEMS","600000"};
+        /***factored包含词汇化信息，PCFG是更快更小的模板，
+         * xinhua据说是根据大陆的《新华日报》训练的语料，chinese同时包含香港和台湾的语料，
+         * xinhuaFactoredSegmenting.ser.gz可以对未分词的句子进行句法解析。
+         ***/
+        String[] options = { "-maxLength", "500","-MAX_ITEMS","600000"};
         String   grammar = "edu/stanford/nlp/models/lexparser/chineseFactored.ser.gz";
         stanfordParser   = LexicalizedParser.loadModel(grammar, options);
 

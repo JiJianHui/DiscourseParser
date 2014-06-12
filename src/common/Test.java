@@ -37,9 +37,28 @@ public class Test
         //Test.testTreeEyee();
         //Test.testJavaFormatOut();
         //Test.checkChar();
-        Test.checkFile();
-        String relNO  = "3-5";
-        System.out.println(relNO.length() == 1 ? Integer.valueOf(relNO) : Integer.valueOf(relNO.substring(0,1)) );
+            Test.checkWordEmbedding();
+    }
+
+    public static void checkWordEmbedding() throws IOException
+    {
+        String fPath = "F:\\Corpus Data\\baike-50.vec.txt";
+        //String fPath = "F:\\Corpus Data\\test.txt";
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLinesWithEncoding(fPath, lines, "UTF-8");
+
+        for(String line:lines)
+        {
+            String[] lists = line.split(" ");
+
+            String word = lists[0];
+
+            if(word.equals("我们"))
+            {
+                System.out.println(lists.length);
+                System.out.println(line);
+            }
+        }
     }
 
     public static void checkChar()
@@ -264,7 +283,7 @@ public class Test
         Resource.LoadExpConnectivesDict();
         Resource.LoadSymWordDict();
 
-        HashMap<String, Integer> connCagInCiLin = new HashMap<>();
+        HashMap<String, Integer> connCagInCiLin = new HashMap<String,Integer>();
 
         //判断每个连词的标签并报错
         for(Map.Entry<String, DSAWordDictItem> entry:Resource.allWordsDict.entrySet())
@@ -321,35 +340,4 @@ public class Test
         return result;
     }
 
-    public static void checkFile() throws IOException {
-        String onlyWordPath = "resource/onlyWord.txt";
-        String p3WordPath = "resource/p3Word(Filtered).txt";
-
-        ArrayList<String> p3Lines   = new ArrayList<String>();
-        ArrayList<String> onlyLines = new ArrayList<String>();
-
-        util.readFileToLines(p3WordPath,p3Lines);
-        util.readFileToLines(onlyWordPath, onlyLines);
-
-        HashSet<String> onlyWords = new HashSet<String>();
-        for(String line:onlyLines)
-        {
-            String[] lists = line.split("\t");
-            onlyWords.add(lists[0]);
-        }
-
-        ArrayList<String> filterLines = new ArrayList<String>();
-
-        for(String line:p3Lines)
-        {
-            String[] lists = line.split("\t");
-            String word = lists[0];
-
-            if( onlyWords.contains(word) ) filterLines.add(line);
-        }
-
-        String fPath = "resource/allWordInP3.txt";
-
-        util.writeLinesToFile(fPath, filterLines);
-    }
 }

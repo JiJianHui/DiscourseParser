@@ -3,6 +3,7 @@ package entity.recognize;
 import common.Constants;
 import resource.Resource;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 /**
@@ -31,8 +32,10 @@ public class DSAParagraph
     }
 
     /**将结果表示为XML字符串的形式**/
-    public String toXML()
+    public String toXML() throws IOException
     {
+        Resource.LoadSenseList();
+        Resource.LoadOldSenseList();
         String result = "<?xml version=\"1.0\" encoding=\"gb2312\" ?><doc>";
         result = result + "<para>";
 
@@ -52,7 +55,14 @@ public class DSAParagraph
                 String type = relation.getRelType(), NO = relation.getRelNO();
                 result = result + "<InterSense id=\"" + curSentence.getId() + "\"";
                 result = result + " type=\"" + type + "\" NO=\"" + NO + "\"";
-                result = result + " content=\""+ Resource.senseLists.get(NO) + "\">";
+                if( Constants.SenseVersion == Constants.OldSenseVersion )
+                {
+                    result = result + " content=\""+ Resource.OldSenseLists.get(NO) + "\">";
+                }
+                else
+                {
+                    result = result + " content=\""+ Resource.senseLists.get(NO) + "\">";
+                }
 
                 result = result + "<arg1>" + relation.getArg1Content() + "</arg1>";
                 result = result + "<arg2>" + relation.getArg2Content() + "</arg2>";

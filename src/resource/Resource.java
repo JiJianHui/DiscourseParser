@@ -10,6 +10,7 @@ import common.Constants;
 import common.util;
 import entity.train.DSAWordDictItem;
 import entity.train.SenseRecord;
+import entity.train.WordVector;
 import org.dom4j.*;
 
 /**
@@ -54,6 +55,9 @@ public class Resource
     public static ArrayList<String>        AllWordTagsInSymCiLin; //所有词在同义词词林中的标签集合(前四位标签)--Aa01
 
     public static LinkedHashMap<String, String> senseLists;
+    public static LinkedHashMap<String, String> OldSenseLists;
+
+    public static HashMap<String, WordVector> wordVectors;
 
     static
     {
@@ -85,6 +89,9 @@ public class Resource
         AllWordTagsInSymCiLin    = new ArrayList<String>();
 
         senseLists               = new LinkedHashMap<String,String>();
+        OldSenseLists            = new LinkedHashMap<String,String>();
+
+        wordVectors              = new HashMap<String, WordVector>();
     }
 
 
@@ -190,16 +197,28 @@ public class Resource
         }
     }
 
+    /**加载旧版本关系体系下的标注语料**/
+    public static void LoadOldRawRecord() throws DocumentException
+    {
+        String fPath = "F:\\Distribution Data\\Corpus_pubGuoOnly\\XML";
+        Resource.LoadRawRecordFromPath(fPath);
+    }
+
+    public static void LoadRawRecord() throws DocumentException
+    {
+        String fPath = "F:\\Distribution Data\\Distribution Data HIT\\Corpus Data\\XML";
+        Resource.LoadRawRecordFromPath(fPath);
+    }
+
     /**
      * 加载新版本下的训练语料，将训练语料加载为各个record
      * @throws DocumentException
      */
-    public static void LoadRawRecord() throws DocumentException
+    public static void LoadRawRecordFromPath(String dir) throws DocumentException
     {
         if( Raw_Train_Annotation_p1.size() > 2 ) return;
-        System.out.println("[--Info--] Loading Raw Record From: " + Constants.Train_Data_Dir);
+        System.out.println("[--Info--] Loading Raw Record From: " + dir);
 
-        String dir = Constants.Train_Data_Dir;
         ArrayList<String> files = new ArrayList<String>();
 
         util.getFiles(dir, files, Constants.P1_Ending);
@@ -208,6 +227,7 @@ public class Resource
 
         for(String fPath:files)
         {
+            //System.out.println(fPath);
             String content   = util.readFileToString(fPath).replaceAll("\r\n", "");
             Document domObj  = DocumentHelper.parseText(content);
             Element rootNode = domObj.getRootElement();
@@ -331,12 +351,12 @@ public class Resource
     {
         if( Stop_Words.size() > 2 ) return;
 
-        System.out.println("[--Info--] Loading Stop Words From: " + Constants.Stop_Word_Path_cn);
-        String path = Constants.Stop_Word_Path_cn;
+        String fPath = "resource/dictionary/Stopwords_cn_1208.txt";
+        System.out.println("[--Info--] Loading Stop Words From: " + fPath);
 
         ArrayList<String> words = new ArrayList<String>();
 
-        util.readFileToLines(path, words);
+        util.readFileToLines(fPath, words);
 
         for(String word:words)
         {
@@ -552,6 +572,58 @@ public class Resource
             String[] lists = line.split("\t");
             senseLists.put(lists[0].trim(), lists[1].trim());
         }
+    }
+
+    /**加载关系列表，保存在sense.txt文件中，每行表示了一个关系编号和一个关系名称**/
+    public static void LoadOldSenseList() throws IOException
+    {
+        if( OldSenseLists.size() > 5 ) return;
+        String fPath = "resource/Sense_old.txt";
+        System.out.println("[--Info--] Loading Sense List from [" + fPath + "]" );
+
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLines(fPath, lines);
+
+        for( String line : lines )
+        {
+            if( line.trim().length() == 0 ) continue;
+
+            String[] lists = line.split("\t");
+            OldSenseLists.put(lists[0].trim(), lists[1].trim());
+        }
+    }
+
+    public static String getSenseContent(String relNO)
+    {
+        String content = "";
+        if( Constants.SenseVersion == Constants.OldSenseVersion )
+        {
+            content = Resource.OldSenseLists.get(relNO);
+        }
+        else{
+            content = Resource.senseLists.get(relNO);
+        }
+
+        return content;
+    }
+
+    public static void LoadWordVector() throws IOException
+    {
+        if( wordVectors.size() > 10 ) return;
+
+        String fPath = "resource/baike-50.vec.txt";  //词向量文件地址
+        System.out.println("[--Info--] Loading Word Vector File from [" + fPath + "]" );
+
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLinesWithEncoding(fPath, lines,"UTF-8");
+
+        for(String line:lines)
+        {
+            WordVector curWordVector = new WordVector(line);
+
+            wordVectors.put(curWordVector.wName, curWordVector);
+        }
+        lines.clear();
     }
 
     public static void main(String[] args) throws IOException, DocumentException

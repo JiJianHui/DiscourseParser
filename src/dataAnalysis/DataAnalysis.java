@@ -10,6 +10,7 @@ import resource.Resource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 /**
@@ -154,6 +155,80 @@ public class DataAnalysis
 
             System.out.println("SenseNO: " + index + " All: " + allAnnoNum[index] + " RecAll: " + recAllNum[index] + " RecCorr: " + recCorrect[index]);
             System.out.println(" P: " + p + " R: " + r + " F: " + f + "\r\n");
+        }
+    }
+
+
+    /***计算仅仅依靠显式连词能够达到的准确率,此次计算是在顶层relType上共四类基础上计算。**/
+    public void countRecognizeOldSenseBaseonExpWord() throws DocumentException, IOException
+    {
+        Resource.LoadOldRawRecord();
+        Resource.LoadWordRelDict();
+
+        //共四大类关系，第一维废除不用，剩下的一维代表一个类
+        long[] recCorrect = new long[]{0, 0, 0, 0, 0, 0, 0, 0}; //正确识别的个数
+        long[] allAnnoNum = new long[]{0, 0, 0, 0, 0, 0, 0, 0}; //标注的所有个数
+        long[] recAllNum  = new long[]{0, 0, 0, 0, 0, 0, 0, 0}; //识别出来的总个数。
+
+        //统计每类关系识别的个数
+        for( SenseRecord curRecord:Resource.Raw_Train_Annotation )
+        {
+            if( curRecord.getType().equalsIgnoreCase(Constants.IMPLICIT) ) continue;
+
+            //标注的关系编号
+            String annoType = curRecord.getRelNO().trim();
+            if( annoType.length() > 1 ) annoType = annoType.substring(0,1);
+            int annoTypeValue = Integer.valueOf(annoType);
+
+            String annoWord = curRecord.getConnective().trim();
+
+            //仅仅使用连词识别的关系编号
+            String mlType;
+            DSAWordDictItem item = Resource.allWordsDict.get(annoWord);
+
+            if( item == null )
+            {
+                //System.out.println(annoWord);
+                //mlType = "0";
+                continue;
+            }
+            else
+            {
+                mlType = item.getMostExpProbalityRelNO();
+                //mlType = util.convertOldRelIDToNew(mlType);
+                if( mlType.length() > 1 ) mlType = mlType.substring(0, 1);
+            }
+
+            int mlTypeValue = Integer.valueOf(mlType);
+
+            //该关系标注的总个数
+            allAnnoNum[annoTypeValue]++;
+
+            //该关系识别正确的个数
+            if(annoTypeValue == mlTypeValue)
+            {
+                recCorrect[annoTypeValue]++;
+            }
+
+            //某个关系识别的总个数
+            recAllNum[mlTypeValue]++;
+        }
+
+        //计算每类关系的prf值
+        for(int index = 1; index <allAnnoNum.length; index++)
+        {
+            if( recAllNum[index] == 0 || allAnnoNum[index] == 0 )
+            {
+                System.out.println("The data set is Zero!");
+                continue;
+            }
+
+            double p = recCorrect[index] * 1.0 / ( recAllNum[index] * 1.0 );
+            double r = recCorrect[index] * 1.0 / ( allAnnoNum[index] * 1.0 );
+            double f = p * r * 2 / ( p + r );
+
+            System.out.println("SenseNO: " + index + " All: " + allAnnoNum[index] + " RecAll: " + recAllNum[index] + " RecCorr: " + recCorrect[index]);
+            System.out.format(" P: %.2f\t R:%.2f\t F:%.2f\n" , p , r, f );
         }
     }
 
@@ -385,6 +460,109 @@ public class DataAnalysis
 
     }
 
+
+    /***计算EDU切分代码的准确率**/
+    public void countEDUAccuray()
+    {
+
+    }
+
+    /***生成连词和信息词典,用来替代CorpusProcess里面的程序，主要原因在于CorpusProcess自成一体，不方便**/
+    public void generateWordDict() throws DocumentException
+    {
+        Resource.LoadRawRecord();
+
+
+    }
+
+    /**根据过滤的词表信息来过滤大词表，onlyWord里面包含的是过滤之后保留下来的连词，而p3Word是程序生成的统计数据。
+     * 为了防止每次都要手动对p3Word之类的文件进行手动过滤，开发了如下方法。**/
+    public void checkFile() throws IOException
+    {
+        String onlyWordPath = "resource/onlyWord.txt";
+        String allWordPath   = "resource/wordAmbiguity.txt";
+
+        ArrayList<String> p3Lines   = new ArrayList<String>();
+        ArrayList<String> onlyLines = new ArrayList<String>();
+
+        util.readFileToLines(allWordPath,p3Lines);
+        util.readFileToLines(onlyWordPath, onlyLines);
+
+        HashSet<String> onlyWords = new HashSet<String>();
+        for(String line:onlyLines)
+        {
+            String[] lists = line.split("\t");
+            onlyWords.add(lists[0]);
+        }
+
+        ArrayList<String> filterLines = new ArrayList<String>();
+
+        for(String line:p3Lines)
+        {
+            String[] lists = line.split("\t");
+            String word = lists[0];
+
+            if( onlyWords.contains(word) ) filterLines.add(line);
+        }
+
+        //String fPath = "resource/allWords.txt";
+
+        util.writeLinesToFile(allWordPath, filterLines);
+    }
+
+    /**根据wordAmbiguity.txt来计算每个连词指示关系的概率。每个连词可能指示多种关系，现在我们需要在此基础上计算指示关系的可能性分布。
+     * 主要计算的是每个连词指示多种关系的分布。**/
+    public void countWordAmbiguity() throws IOException
+    {
+        String fPath = "resource/wordAmbiguity.txt";
+        ArrayList<String> lines = new ArrayList<String>();
+
+        util.readFileToLines(fPath, lines);
+
+        double eps = 0.05; //低于这个概率值就认为是0
+        int allNum = 0;
+        int[] relNums = new int[7]; //index = 1: 指示一种关系的连词次数  index = 2 指示两种关系的连词次数
+
+        for( String line : lines)
+        {
+            WordAmbiguity tempWord = new WordAmbiguity(line);
+
+            allNum = allNum + tempWord.number;
+
+            //计算仅仅指示一种关系的连词个数,总共7类关系
+            //double maxProbality = tempWord.probaliaty[tempWord.maxIndex];
+            //if( Math.abs(maxProbality - 1) < 0.05 ) singleNum++;
+
+            int zeroNum = tempWord.getZeroNum(eps);//如果有6个零，那么就代表指示了一种关系
+            relNums[7 - zeroNum] = relNums[7 - zeroNum] + tempWord.number;
+        }
+
+        System.out.println("All num is " + allNum);
+        for(int index = 0; index < relNums.length; index++)
+        {
+            System.out.format("Point to %d rels's num is %d \n", index, relNums[index]);
+        }
+    }
+
+
+    public void findString() throws DocumentException
+    {
+        String text = "而";
+        Resource.LoadOldRawRecord();
+
+        for( SenseRecord curRecord:Resource.Raw_Train_Annotation_p3 )
+        {
+            String conn = curRecord.getConnective();
+
+            if(curRecord.getRelNO().startsWith("3") )
+            {
+                System.out.println(curRecord.getText());
+                System.out.println(curRecord.getRelNO());
+            }
+
+        }
+    }
+
     public static void main(String[] args) throws IOException, DocumentException
     {
         DataAnalysis analysis = new DataAnalysis();
@@ -394,5 +572,9 @@ public class DataAnalysis
         //analysis.countExpAndImpDistibutionInFile();
         //analysis.checkData();
         //analysis.countRel();
+        //analysis.checkFile();
+        //analysis.countWordAmbiguity();
+        //analysis.countRecognizeOldSenseBaseonExpWord();
+        analysis.findString();
     }
 }

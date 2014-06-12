@@ -59,7 +59,7 @@ public class Constants
 
 
     //中文停用词词表,注意此处的停用词词表中也把中文的连词当做了停用词
-    public static String Stop_Word_Path_cn = "/resource/dictionary/topwords_cn_1208.txt";
+    public static String Stop_Word_Path_cn = "/resource/dictionary/Stopwords_cn_1208.txt";
 
     //ltp分析结果是独立保存的，sentID保存了每个句子对应的编号。这样就可以找到对应的处理结果
     public static String Ltp_XML_Result_P3        = "data/p3";
@@ -141,6 +141,10 @@ public class Constants
 
     public static String DefaultRelNO = "4-1";  //承接类型
 
+    //关系体系的版本号。0：代表旧关系体系 1：代表新关系体系
+    public static int OldSenseVersion = 0;
+    public static int NewSenseVersion = 1;
+    public static int SenseVersion = OldSenseVersion;
 
     //新的关系体系的关系编号
     public static String[] relNo =

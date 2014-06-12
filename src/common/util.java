@@ -239,6 +239,21 @@ public class util
         br.close();
     }
 
+    public static void readFileToLinesWithEncoding(String fPath, ArrayList<String> lines, String encoding) throws IOException
+    {
+        FileInputStream in = new FileInputStream( new File(fPath) );
+        BufferedReader  br = new BufferedReader( new InputStreamReader(in,encoding) );
+
+        String line = null;
+        while( ( line = br.readLine() ) != null )
+        {
+            line = line.trim();
+            lines.add(line);
+        }
+
+        br.close();
+    }
+
     /**
      * 将一个文件读成按行存储的vector
      * @param lines
@@ -545,7 +560,7 @@ public class util
         {
             boolean  find  = false;
 
-            if(line.indexOf(word) == -1 ) continue;
+            if( !line.contains(word) ) continue;
 
             String[] lists = line.split(" ");
 
@@ -558,7 +573,7 @@ public class util
                 }
             }
 
-            if( find == true ) break;
+            if( find ) break;
         }
 
         return result;
@@ -617,6 +632,16 @@ public class util
     public static int countSameCharatersNum(String sour, String dest)
     {
         int num = 0;
+        int sourLen = sour.length();
+        int destLen = dest.length();
+
+        //确保dest是最长的那位
+        if( destLen < sourLen )
+        {
+            String temp = dest;
+            dest        = sour;
+            sour        = temp;
+        }
 
         for(int index = 0; index < sour.length(); index++)
         {
@@ -677,5 +702,11 @@ public class util
         }
 
         return result;
+    }
+
+    /**对数据进行排序。目前采用最简单的冒泡排序*/
+    public static void sortArrays(Object[] sources)
+    {
+
     }
 }

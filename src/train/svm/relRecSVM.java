@@ -1,13 +1,17 @@
 package train.svm;
 
+import common.Constants;
 import common.util;
+import entity.train.WordVector;
 import libsvm.svm;
 import libsvm.svm_model;
 import libsvm.svm_node;
+import resource.Resource;
 
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.StringTokenizer;
 
 /**
@@ -98,9 +102,19 @@ public class relRecSVM
         this.scaleTestData();
 
         //String[] trainArgs = {"-c", "2048", "-g", "0.0078125","-w1","6","-w0","1", scaleTrainDataPath};
-        String[] trainArgs = {"-c", "2.0", "-g", "0.125","-w1","15","-w2","4","-w3","10","-w4","1", scaleTrainDataPath};
 
-        this.modelFilePath = svm_train.main(trainArgs);
+
+        if(Constants.SenseVersion == Constants.NewSenseVersion )
+        {
+            String[] trainArgs = {"-c", "2.0", "-g", "0.125","-w1","15","-w2","4","-w3","10","-w4","1", scaleTrainDataPath};
+            this.modelFilePath = svm_train.main(trainArgs);
+        }
+        else
+        {
+            System.out.println(scaleTrainDataPath);
+            String[] trainArgs = {"-c", "8.0", "-g", "0.03125","-w2","4","-w4","6","-w5","1","-w6","3",scaleTrainDataPath};
+            this.modelFilePath = svm_train.main(trainArgs);
+        }
 
         return this.modelFilePath;
     }
@@ -127,7 +141,16 @@ public class relRecSVM
     {
         if( this.svmModel != null ) return;
 
-        String fPath = "./impRelTrainData._scale.txt.model";
+        String fPath = "";
+        if( Constants.SenseVersion == Constants.OldSenseVersion )
+        {
+            fPath = "./oldImpRelTrainData._scale.txt.model";
+        }
+        else
+        {
+            fPath = "./impRelTrainData._scale.txt.model";
+        }
+
         System.out.println("[--Info--] Loading SVM Model From " + fPath );
         this.svmModel = svm.svm_load_model(fPath);
     }
@@ -182,10 +205,20 @@ public class relRecSVM
 
     public void countPRF() throws IOException
     {
+        int maxSenseIndex = 4;
+
+        if( Constants.SenseVersion == Constants.OldSenseVersion ) maxSenseIndex = 6;
+
+        for(int relID = 1; relID < maxSenseIndex + 1; relID++)
+        {
+            this.countPRF(relID);
+        }
+    }
+
+    public void countPRF(int relID) throws IOException
+    {
         String testFile = this.scaleTestDataPath;
         String result   = this.resultPath;
-        //String testFile = "data/relation/impRelTestData._scale.txt";
-        //String result   = "data/relation/impRelTrainData._result.txt";
 
         ArrayList<String> testLines   = new ArrayList<String>();
         ArrayList<String> resultLines = new ArrayList<String>();
@@ -203,17 +236,46 @@ public class relRecSVM
             int testLabel   = Double.valueOf(lists[0]).intValue();
             int resultLabel = Double.valueOf(resultLines.get(index).trim()).intValue();
 
-            allNum++;
-            if( testLabel == 4 ) recNum++;
-            if( testLabel == 4 && testLabel == resultLabel) recCorrect++;
+            if( testLabel   == relID ) allNum++;
+            if( resultLabel == relID ) recNum++;
+            if( resultLabel == relID && testLabel == resultLabel) recCorrect++;
 
         }
 
         double p = recCorrect / recNum;
-        double r = recNum / allNum ;
+        double r = recCorrect / allNum ;
         double f = 2 * p * r / (p + r);
 
-        System.out.format("P: %.3f R: %.3f F: %.3f\n", p, r, f);
+        System.out.format("SenseID: %d P: %.3f R: %.3f F: %.3f\n", relID, p, r, f);
+    }
+
+
+    public void testModelWithWordVector() throws IOException
+    {
+
+        this.scaleTrainDataPath = "data/relation/oldImpRelTrainData.wordVector.txt";
+        this.scaleTestDataPath  = "data/relation/oldImpRelTestData.wordVector.txt";
+
+        if(Constants.SenseVersion == Constants.NewSenseVersion )
+        {
+            //String[] trainArgs = {scaleTrainDataPath};
+            String[] trainArgs = {"-c", "8.0", "-g", "0.0078125","-w1","15","-w2","4","-w3","10","-w4","1", scaleTrainDataPath};
+            this.modelFilePath = svm_train.main(trainArgs);
+        }
+        else
+        {
+            //String[] trainArgs = {scaleTrainDataPath};
+            String[] trainArgs = {"-c", "8.0", "-g", "0.0078125","-w2","6","-w4","6", scaleTrainDataPath};
+            this.modelFilePath = svm_train.main(trainArgs);
+        }
+
+        this.resultPath   = "data/relation/oldImpRelTestData.wordVector" + "_result.txt";
+
+        String[] testArgs = {this.scaleTestDataPath, modelFilePath, this.resultPath};
+
+        Double   accuracy = svm_predict.main(testArgs);
+
+        this.countPRF();
     }
 
     private static int atoi(String s){ return Integer.parseInt(s); }
@@ -223,15 +285,24 @@ public class relRecSVM
     {
         relRecSVM test = new relRecSVM();
 
+        /**
         String trainDataPath = "data/relation/impRelTrainData.txt";
         String testDataPath  = "data/relation/impRelTestData.txt";
 
-        String modelPath     = test.trainModel(trainDataPath, testDataPath);
+        if( Constants.SenseVersion == Constants.OldSenseVersion )
+        {
+            trainDataPath = "data/relation/oldImpRelTrainData.txt";
+            testDataPath  = "data/relation/oldImpRelTestData.txt";
+        }
+
+        String modelPath = test.trainModel(trainDataPath, testDataPath);
 
         test.loadModel(modelPath);
         test.testModel(modelPath);
 
         test.countPRF();
 
+         **/
+        test.testModelWithWordVector();
     }
 }
