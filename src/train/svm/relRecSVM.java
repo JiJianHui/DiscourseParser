@@ -265,8 +265,9 @@ public class relRecSVM
         else
         {
             //String[] trainArgs = {scaleTrainDataPath};
-            String[] trainArgs = {"-c", "8.0", "-g", "0.0078125","-w2","6","-w4","6", scaleTrainDataPath};
+            String[] trainArgs = {"-c", "2.0", "-g", "0.001953125","-w2","3","-w4","9","-w5","1","-w6","3", scaleTrainDataPath};
             this.modelFilePath = svm_train.main(trainArgs);
+            System.out.println(trainArgs.toString());
         }
 
         this.resultPath   = "data/relation/oldImpRelTestData.wordVector" + "_result.txt";

@@ -354,6 +354,7 @@ public class ImpRelFeatureExtract
         Resource.LoadOldRawRecord();
         Resource.LoadWordVector();
         Resource.LoadStopWords();
+        Resource.LoadWordRelDict();
 
         ArrayList<String> lines = new ArrayList<String>();
 
@@ -385,7 +386,13 @@ public class ImpRelFeatureExtract
                 WordVector curWordVector = Resource.wordVectors.get(curWord);
 
                 if(  curWordVector == null ) continue;
-                if( Resource.Stop_Words.contains(curWord) ) continue;
+                if( Resource.Stop_Words.contains(curWord) )
+                {
+                    continue;
+                }
+//                {
+//                    if( !Resource.allWordsDict.containsKey(curWord) ) continue;
+//                }
 
                 int weight = 1;
                 for( Term curTerm:arg1Words )
@@ -393,9 +400,9 @@ public class ImpRelFeatureExtract
                     if( curTerm.getName().equals(curWord) )
                     {
                         String pos = curTerm.getNatrue().natureStr;
-                        if( pos.startsWith("a") ) weight = 2;  //形容词
-                        if( pos.startsWith("u") ) weight = 2;  //语气词
-                        if( pos.startsWith("n") ) weight = 3;   //名词
+                        if( pos.startsWith("a") ) weight = 3;  //形容词
+                        if( pos.startsWith("u") ) weight = 1;  //语气词
+                        if( pos.startsWith("n") ) weight = 2;   //名词
                         if( pos.startsWith("v") ) weight = 4;   //动词
                     }
                 }
@@ -408,16 +415,22 @@ public class ImpRelFeatureExtract
                 WordVector curWordVector = Resource.wordVectors.get(curWord);
 
                 if(  curWordVector == null ) continue;
-                if( Resource.Stop_Words.contains(curWord) ) continue;
+                if( Resource.Stop_Words.contains(curWord) )
+                {
+                    continue;
+                }
+//                {
+//                    if( !Resource.allWordsDict.containsKey(curWord) ) continue;
+//                }
 
                 int weight = 1;
                 for( Term curTerm : arg2Words )
                 {
                     if( curTerm.getName().equals(curWord) ){
                         String pos = curTerm.getNatrue().natureStr;
-                        if( pos.startsWith("a") ) weight = 2;  //形容词
+                        if( pos.startsWith("a") ) weight = 3;  //形容词
                         if( pos.startsWith("u") ) weight = 2;  //语气词
-                        if( pos.startsWith("n") ) weight = 3;   //名词
+                        if( pos.startsWith("n") ) weight = 2;   //名词
                         if( pos.startsWith("v") ) weight = 4;   //动词
                     }
                 }
@@ -432,11 +445,13 @@ public class ImpRelFeatureExtract
 
             for( int index = 0; index < 50; index++ )
             {
-                line = line + " " + (index+1) + ":" + ( arg1Vector.wVector[index] / arg1Words.size() );
+                //line = line + " " + (index+1) + ":" + ( arg1Vector.wVector[index] / arg1Words.size() );
+                line = line + " " + (index+1) + ":" + ( arg1Vector.wVector[index]  );
             }
             for( int index = 0; index < 50; index++ )
             {
-                line = line + " " + (index + 51) + ":" + ( arg2Vector.wVector[index] / arg2Words.size() );
+                //line = line + " " + (index + 51) + ":" + ( arg2Vector.wVector[index] / arg2Words.size() );
+                line = line + " " + (index + 51) + ":" + ( arg2Vector.wVector[index]  );
             }
 
             lines.add(line);
@@ -452,6 +467,7 @@ public class ImpRelFeatureExtract
         {
             trainPath = "data/relation/oldImpRelTrainData.wordVector.txt";
             testPath  = "data/relation/oldImpRelTestData.wordVector.txt";
+            System.out.println(trainPath);
         }
 
         int allNum   = lines.size();
