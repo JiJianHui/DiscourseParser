@@ -40,7 +40,7 @@ public class RelVectorItem
      * 特征格式说明：
      * 【label:关系编号 1：arg1极性 2:arg2极性 3：arg1句首词 4:arg2句首词 5:arg1关键词 6:arg2关键词
      * 7:arg1 root词  8:arg2 root词   9:arg1动词集合 10:arg2动词集合】
-     * 关于动词：采取判断在同义词标签中的索引作为特征索引。
+     * 关于动词：采取判断在同义词标签中的索引作为特9征索引。
      **/
     public String toLineForLibsvm() throws IOException
     {

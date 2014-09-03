@@ -18,6 +18,9 @@ import train.relation.RelVectorItem;
 import train.word.ConnVectorItem;
 import resource.Resource;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
@@ -1325,10 +1328,9 @@ public class DiscourseParser
         Resource.LoadRawRecord();
         this.phraseParser = new PhraseParser();
 
-        int allEDUNum = 0, arg1Correct = 0, arg2Correct = 0, argAllCorrect = 0;//完全相同的个数
+        int allEDUNum = 0, arg1Correct = 0, arg2Correct = 0;//完全相同的个数
         int[] arg1CorrectInPercent   = new int[10];
         int[] arg2CorrectInPercent   = new int[10];
-        int[] argAllCorrectInPercent = new int[10]; //部分相同的，相似比例在7成-8成-9成
 
         DSAEDU rootEDU = null;
         String text, arg1Content, arg2Content, arg1EDU, arg2EDU;
@@ -1418,6 +1420,92 @@ public class DiscourseParser
         }
     }
 
+    /**
+     * 计算使用逗号来对EDU进行切分得到的准确率。目前的做法是简单使用逗号对句子进行分割
+     * 并和基于规则的EDU切分进行对比。
+     * @throws DocumentException
+     */
+    public void countEDUAccurayWithComma() throws DocumentException, IOException
+    {
+        Resource.LoadRawRecord();
+
+        int allEDUNum = 0, arg1Correct = 0, arg2Correct = 0;//完全相同的个数
+        int[] arg1CorrectInPercent   = new int[10];
+        int[] arg2CorrectInPercent   = new int[10];
+
+
+        String text, arg1Content, arg2Content, arg1EDU, arg2EDU;
+
+        //随机获取200个来检查准确率， 用300个做缓冲
+        boolean[] exist = util.getRandomArrays(Resource.Raw_Train_Annotation_p3.size(), 500);
+
+        String fPath = "data/edu/eduSplitWithSimpleComma.txt";
+        BufferedWriter fw = new BufferedWriter(new FileWriter(new File(fPath)));
+
+        for(int index = 0; index < Resource.Raw_Train_Annotation_p3.size(); index++)
+        {
+            if( !exist[index] ) continue;
+
+            SenseRecord curRecord = Resource.Raw_Train_Annotation_p3.get(index);
+
+            text        = curRecord.getText();
+            arg1Content = curRecord.getArg1();
+            arg2Content = curRecord.getArg2();
+
+            if( curRecord.getType().equalsIgnoreCase(Constants.IMPLICIT) ) continue;
+            if( text.length() > Constants.Max_Sentence_Length + 100 ) continue;
+
+            //对句子进行逗号分割并输出结果
+            allEDUNum = allEDUNum + 2;
+
+            String[] edus =  util.splitSentenceWithComma(text);
+
+            if( edus.length < 2 ) continue;
+
+            arg1EDU = edus[0];
+            arg2EDU = edus[1];
+
+            fw.write("---------------************************---------------------------\n");
+            fw.write( text + "\nannoted1: " + arg1Content + "\n comma: " + edus[0] + "\n");
+            fw.write( "annoted2: " + arg2Content + "\n comma: " + edus[1] + "\n\n");
+
+            //程序自动计算准确率
+            int sameNum1 = util.countSameCharatersNum(arg1Content, arg1EDU);
+            int sameNum2 = util.countSameCharatersNum(arg2Content, arg2EDU);
+
+            int length1 = arg1Content.length() > arg1EDU.length() ? arg1EDU.length():arg1Content.length();
+            int length2 = arg2Content.length() > arg2EDU.length() ? arg2EDU.length():arg2Content.length();
+
+            if( Math.abs(sameNum1 - length1) < 3 && Math.abs(arg1EDU.length() - arg1Content.length()) < 3 ) arg1Correct++;
+            if( Math.abs(sameNum2 - length2) < 3 && Math.abs(arg1EDU.length() - arg1Content.length()) < 3 ) arg2Correct++;
+
+
+            //超过7成相似，则不相似的占据3成
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.4) arg1CorrectInPercent[6]++;
+
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.3) arg1CorrectInPercent[7]++;
+            if( Math.abs(sameNum2 - length2) * 1.0 <= length2 * 0.3) arg2CorrectInPercent[7]++;
+
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.2) arg1CorrectInPercent[8]++;
+            if( Math.abs(sameNum2 - length2) * 1.0 <= length2 * 0.2) arg2CorrectInPercent[8]++;
+
+            if( Math.abs(sameNum1 - length1) * 1.0 <= length1 * 0.1) arg1CorrectInPercent[9]++;
+            if( Math.abs(sameNum2 - length2) * 1.0 <= length2 * 0.1) arg2CorrectInPercent[9]++;
+
+
+        }
+        fw.close();
+
+        System.out.println("All EDU:" + allEDUNum );
+        System.out.println(" arg1Correct:" + arg1Correct + " arg2Correct:" + arg2Correct );
+
+        for(int index = 7; index < 10; index ++)
+        {
+            System.out.format("Same Percentnge %d0 percent arg1CorrectIn:%d arg2Correct:%d\n", index, arg1CorrectInPercent[index], arg2CorrectInPercent[index]);
+        }
+
+    }
+
     public static void main(String[] args) throws Exception
     {
         //DiscourseParser discourseParser = new DiscourseParser();
@@ -1443,7 +1531,8 @@ public class DiscourseParser
          **/
         DiscourseParser dp = new DiscourseParser(true);
         //dp.parseRawFile(twoSentence, needSegment);
-        dp.countEDUAccuray();
+        //dp.countEDUAccuray();
+        dp.countEDUAccurayWithComma();
     }
 }
 

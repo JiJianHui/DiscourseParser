@@ -709,4 +709,14 @@ public class util
     {
 
     }
+
+
+    public static String[] splitSentenceWithComma(String sentence)
+    {
+        //按照句子分隔符来分割句子
+        Matcher  matcher   = Constants.Sentence_Element_Pattern.matcher(sentence);
+        String[] sentences = Constants.Sentence_Element_Pattern.split(sentence);
+
+        return sentences;
+    }
 }
