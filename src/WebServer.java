@@ -103,8 +103,8 @@ public class WebServer
         {
             WebServer server = new WebServer();
 
-            //server.run();
-            server.connectToClient();
+            server.run();
+            //server.connectToClient();
         }
         catch (Exception e)
         {
