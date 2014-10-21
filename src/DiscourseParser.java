@@ -126,17 +126,20 @@ public class DiscourseParser
         //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
         this.preProcess(sentence, needSegment);
 
-        //2: 识别单个连词和识别并列连词：不仅...而且
-        this.findConnWordWithML(sentence);
-        this.markConnAsInterOrCross(sentence);
-        this.findParallelWord(sentence);
-
         //4: 将句子按照短语结构拆分成基本EDU
         //this.findArgumentInLine(sentence);
         boolean tempResult = this.findArgumentWithPhraseParser(sentence);
 
         //4.1：避免出现句子结构非法的Sentence
         if( !tempResult ){ sentence.setIsCorrect(false); return; }
+
+
+        //2: 识别单个连词和识别并列连词：不仅...而且
+        this.findConnWordWithML(sentence);
+        this.markConnAsInterOrCross(sentence);
+        this.findParallelWord(sentence);
+
+
 
         //5: 确定每个连词所涉及到的两个EDU来产生候选显式关系
         this.matchConnAndEDUforExpRelation(sentence);
@@ -197,6 +200,9 @@ public class DiscourseParser
     private void preProcess(DSASentence sentence, boolean needSegment)
     {
         List<Term> words;
+        int beginIndex = 0;
+        String segmentResult = "";
+        ArrayList<ConnVectorItem> candidateTerms = new ArrayList<ConnVectorItem>();
 
         if( !needSegment )
         {
@@ -218,11 +224,26 @@ public class DiscourseParser
             }
         }
         else{
+            //需要分词
             words = ToAnalysis.parse(util.removeAllBlank(sentence.getContent()));
         }
 
+        //a: 针对句子中的每个词进行抽取特征
+
+
         sentence.setAnsjWordTerms(words);
         sentence.setContent( util.removeAllBlank(sentence.getContent()) );
+
+        for( Term wordItem : sentence.getAnsjWordTerms() )
+        {
+            String wContent     = wordItem.getName().trim();
+            ConnVectorItem item = new ConnVectorItem(wContent);
+
+            segmentResult += wContent + " ";
+        }
+
+        //设置分词后的结果
+        sentence.setSegContent( segmentResult.trim() );
     }
 
     //-------------------------------1: Connective Recognize----------------------
@@ -313,7 +334,7 @@ public class DiscourseParser
         }
 
         //设置分词后的结果
-        sentence.setSegContent( segmentResult.trim() );
+       // sentence.setSegContent( segmentResult.trim() );
     }
 
 
