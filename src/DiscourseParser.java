@@ -126,18 +126,18 @@ public class DiscourseParser
         //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
         this.preProcess(sentence, needSegment);
 
+        //2: 识别单个连词和识别并列连词：不仅...而且
+        this.findConnWordWithML(sentence);
+        this.markConnAsInterOrCross(sentence);
+        this.findParallelWord(sentence);
+
+
         //4: 将句子按照短语结构拆分成基本EDU
         //this.findArgumentInLine(sentence);
         boolean tempResult = this.findArgumentWithPhraseParser(sentence);
 
         //4.1：避免出现句子结构非法的Sentence
         if( !tempResult ){ sentence.setIsCorrect(false); return; }
-
-
-        //2: 识别单个连词和识别并列连词：不仅...而且
-        this.findConnWordWithML(sentence);
-        this.markConnAsInterOrCross(sentence);
-        this.findParallelWord(sentence);
 
 
 
