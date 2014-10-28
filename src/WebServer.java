@@ -38,8 +38,14 @@ public class WebServer
                 InputStreamReader cIn = new InputStreamReader(client.getInputStream());
                 BufferedReader reader = new BufferedReader(cIn);
 
-                String line = reader.readLine();
-                System.out.println("get a query:" + line);
+                String strLine,line="";
+                while((strLine=reader.readLine())!=null){
+                    System.out.println("get a query:" + strLine);
+                    line += strLine;
+                    if(line.indexOf("EOF")!= -1)    break;
+                }
+
+
 
                 String response;
                 boolean needSegment;
