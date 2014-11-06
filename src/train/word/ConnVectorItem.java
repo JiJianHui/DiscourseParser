@@ -21,6 +21,8 @@ public class ConnVectorItem
     private String prevPos;
     private String nextPos;
     private String relateTag;
+    private String prev1Pos;
+    private String prev2Pos;
 
 
     //因为特征都是一个个的实数值，因此采用下面的数组来存放
@@ -241,6 +243,14 @@ public class ConnVectorItem
 
     public void setPrevPos(String prevPos) {
         this.prevPos = prevPos;
+    }
+
+    public void setPrev1Pos(String prevPos) {
+        this.prev1Pos = prevPos;
+    }
+
+    public void setPrev2Pos(String prevPos) {
+        this.prev2Pos = prevPos;
     }
 
     public String getNextPos() {
