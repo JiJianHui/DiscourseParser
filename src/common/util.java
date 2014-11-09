@@ -484,6 +484,16 @@ public class util
         return result;
     }
 
+    //去掉字符串中的制表符、回车、换行
+    public static String replaceBlank(String str) {
+        String result = "";
+        if (str!=null) {
+            Pattern p = Pattern.compile("\\s*|\t|\r|\n");
+            Matcher m = p.matcher(str);
+            result = m.replaceAll("");
+        }
+        return result;
+    }
 
     /**
      * 将一个范围内的数字缩放到另外一个范围内
@@ -718,5 +728,16 @@ public class util
         String[] sentences = Constants.Sentence_Element_Pattern.split(sentence);
 
         return sentences;
+    }
+
+    public static String getContent(BufferedReader br){
+        try{
+            return br.readLine();
+        }
+        catch(IOException e){
+            e.printStackTrace();
+            return null;
+        }
+
     }
 }

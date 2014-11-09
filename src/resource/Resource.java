@@ -200,9 +200,9 @@ public class Resource
     /**加载旧版本关系体系下的标注语料**/
     public static void LoadOldRawRecord() throws DocumentException
     {
-        String fPath = "F:\\Distribution Data\\Corpus_pubGuoOnly\\XML";
-        Resource.LoadRawRecordFromPath(fPath);
-    }
+    String fPath = "F:\\Distribution Data\\Corpus_pubGuoOnly\\XML";
+    Resource.LoadRawRecordFromPath(fPath);
+}
 
     public static void LoadRawRecord() throws DocumentException
     {
@@ -578,7 +578,7 @@ public class Resource
     public static void LoadOldSenseList() throws IOException
     {
         if( OldSenseLists.size() > 5 ) return;
-        String fPath = "resource/Sense_old.txt";
+        String fPath = "resource/Sense.txt";
         System.out.println("[--Info--] Loading Sense List from [" + fPath + "]" );
 
         ArrayList<String> lines = new ArrayList<String>();

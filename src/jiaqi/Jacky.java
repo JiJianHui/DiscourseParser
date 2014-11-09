@@ -25,7 +25,7 @@ public class Jacky {
         for(SenseRecord sRecord:Resource.Raw_Train_Annotation){
             if(sRecord.getType().equals(Constants.IMPLICIT)){
                 //System.out.println(sRecord.getRelNO()+sRecord.getArg1()+sRecord.getArg2());
-                String str = sRecord.getRelNO()+sRecord.getArg1()+sRecord.getArg2();
+                String str = sRecord.getRelNO()+sRecord.getArg1()+" | "+sRecord.getArg2();
                 results.add(str);
 
             }

@@ -1,4 +1,4 @@
-package maxent;///////////////////////////////////////////////////////////////////////////////
+package train.maxent;///////////////////////////////////////////////////////////////////////////////
 // Copyright (C) 2001 Chieu Hai Leong and Jason Baldridge
 //
 // This library is free software; you can redistribute it and/or
@@ -19,8 +19,6 @@ package maxent;/////////////////////////////////////////////////////////////////
 import opennlp.maxent.*;
 import opennlp.maxent.io.*;
 import java.io.*;
-import javax.swing.*;
-import java.awt.event.*;
 
 /**
  * Test the model on some input.
