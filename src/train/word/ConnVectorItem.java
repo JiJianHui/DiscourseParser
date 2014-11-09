@@ -23,7 +23,7 @@ public class ConnVectorItem
     private String relateTag;
     private String prev1Pos;
     private String prev2Pos;
-
+    boolean ssOrPs;         // true:ss  false:ps
 
     //因为特征都是一个个的实数值，因此采用下面的数组来存放
     //private double[] posFeatures;
@@ -50,6 +50,7 @@ public class ConnVectorItem
         //this.posFeatures     = new double[Constants.posTagsNum];
         //this.nextPosFeatures = new double[Constants.posTagsNum];
        // this.prevPosFeatures = new double[Constants.posTagsNum];
+        this.ssOrPs = true;     //SS is more possible！
 
         this.length          = 0;
         this.positionInLine  = -1;
@@ -252,6 +253,16 @@ public class ConnVectorItem
     public void setPrev2Pos(String prevPos) {
         this.prev2Pos = prevPos;
     }
+
+    public String getPrev1Pos() {
+        return prev1Pos;
+    }
+
+    public String getPrev2Pos() {
+        return prev2Pos;
+    }
+
+
 
     public String getNextPos() {
         return nextPos;
