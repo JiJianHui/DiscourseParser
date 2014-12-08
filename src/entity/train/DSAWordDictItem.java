@@ -61,6 +61,7 @@ public class DSAWordDictItem
         String[] lists  = line.trim().split("\t");
 
         this.content  = lists[0].trim().replace("...", ";");
+        this.isParallelWord = content.contains(";");
 
         this.expNum = Integer.valueOf(lists[2]);
         this.impNum = Integer.valueOf(lists[3]);

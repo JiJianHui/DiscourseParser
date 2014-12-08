@@ -23,7 +23,53 @@ public class ConnVectorItem
     private String relateTag;
     private String prev1Pos;
     private String prev2Pos;
-    boolean ssOrPs;         // true:ss  false:ps
+    private String ssOrPs;         //标记类型：SS或PS
+    private String prev1Content;
+    private String prev2Content;
+    private int syntacticCategory; //标记连词句法属性，0为单个连词，1为并列连词
+    private int leftSiblings;       //左兄弟个数
+    private int rightSiblings;      //右兄弟个数
+
+    public void setLeftSiblings(int leftSiblings) {
+        this.leftSiblings = leftSiblings;
+    }
+
+    public void setRightSiblings(int rightSiblings) {
+        this.rightSiblings = rightSiblings;
+    }
+
+    public int getLeftSiblings() {
+        return leftSiblings;
+    }
+
+    public int getRightSiblings() {
+        return rightSiblings;
+    }
+
+    public int getSyntacticCategory() {
+        return syntacticCategory;
+    }
+
+    public void setSyntacticCategory(int syntacticCategory) {
+        this.syntacticCategory = syntacticCategory;
+    }
+
+    public String getPrev1Content() {
+        return prev1Content;
+    }
+
+    public void setPrev1Content(String prev1Content) {
+        this.prev1Content = prev1Content;
+    }
+
+    public void setPrev2Content(String prev2Content) {
+        this.prev2Content = prev2Content;
+    }
+
+    public String getPrev2Content() {
+        return prev2Content;
+    }
+
 
     //因为特征都是一个个的实数值，因此采用下面的数组来存放
     //private double[] posFeatures;
@@ -50,7 +96,7 @@ public class ConnVectorItem
         //this.posFeatures     = new double[Constants.posTagsNum];
         //this.nextPosFeatures = new double[Constants.posTagsNum];
        // this.prevPosFeatures = new double[Constants.posTagsNum];
-        this.ssOrPs = true;     //SS is more possible！
+        this.ssOrPs = new String("PS");     //SS is more possible！
 
         this.length          = 0;
         this.positionInLine  = -1;
@@ -295,4 +341,13 @@ public class ConnVectorItem
     public void setNotConnNum(int notConnNum) {
         this.notConnNum = notConnNum;
     }
+
+    public void setSsOrPs(String ssOrPs){
+        this.ssOrPs = ssOrPs;
+    }
+
+    public String getSSOrPS(){
+        return ssOrPs;
+    }
+
 }

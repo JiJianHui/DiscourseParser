@@ -413,6 +413,21 @@ public class util
         fw.close();
     }
 
+    public static void appendMethodB(String fileName, ArrayList<String> lines) throws  IOException{
+
+        FileWriter fw = new FileWriter(fileName, true);
+
+        for(String line : lines)
+        {
+            fw.write(line + "\r\n");
+        }
+
+        fw.close();
+
+    }
+
+
+
     public static void main(String argus[])
     {
         //²âÊÔ¾ä×Ó·Ö¸î
@@ -426,6 +441,7 @@ public class util
             System.out.println( "-----------------------------" );
             System.out.println( sentences.get(index) );
         }
+
     }
 
 
