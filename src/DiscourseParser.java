@@ -2,6 +2,7 @@ import common.Constants;
 import entity.recognize.*;
 import entity.train.DSAWordDictItem;
 import entity.train.SenseRecord;
+import net.didion.jwnl.data.IndexWord;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import train.svm.wordRecSVM;
 import train.svm.relRecSVM;
@@ -123,19 +124,14 @@ public class DiscourseParser
      */
     public void processSentence(DSASentence sentence, boolean needSegment) throws IOException
     {
+        boolean argPosition = true;     //默认将论元位置设置为SS
         //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
         this.preProcess(sentence, needSegment);
 
         //2: 识别单个连词和识别并列连词：不仅...而且
         this.findConnWordWithML(sentence);
-        this.markConnAsInterOrCross(sentence);
+        argPosition = this.markConnAsInterOrCross(sentence);
         this.findParallelWord(sentence);
-
-        //3论元位置分类
-        //3.1 首先抽取特征
-        this.argPositonWithML(sentence);
-        //3.2 论元位置分类
-
 
         //4: 将句子按照短语结构拆分成基本EDU
         //this.findArgumentInLine(sentence);
@@ -337,96 +333,16 @@ public class DiscourseParser
                 sentence.getConWords().add(connective);
             }
         }
-
-        //设置分词后的结果
-       // sentence.setSegContent( segmentResult.trim() );
     }
-
-/*
-    抽取特征，准备论元位置分类
- */
-    private void argPositonWithML(DSASentence sentence) throws IOException
-    {
-        int beginIndex = 0;
-        String segmentResult = "";
-
-        ArrayList<ConnVectorItem> candidateTerms = new ArrayList<ConnVectorItem>();
-
-        //a: 针对句子中的每个词进行抽取特征
-        for( Term wordItem : sentence.getAnsjWordTerms() )
-        {
-            String wContent     = wordItem.getName().trim();
-            ConnVectorItem item = new ConnVectorItem(wContent);
-
-            segmentResult += wContent + " ";
-
-            //2: 过滤掉噪音词
-            if( !Resource.allWordsDict.containsKey(wContent) ) continue;
-
-            //3：获取词性特征
-            String wPrev1Pos = "w",wPrev2Pos = "w";
-            Term wPrev1Term = wordItem.getFrom();
-            Term wPrev2Term = wPrev1Term.getFrom();
-
-            if( wPrev1Term != null ) wPrev1Pos = wPrev1Term.getNatrue().natureStr;
-            if( wPrev2Term != null ) wPrev2Pos = wPrev2Term.getNatrue().natureStr;
-            // if( wNextTerm != null ) wNextPos = wNextTerm.getNatrue().natureStr;
-
-
-            item.setPos( wordItem.getNatrue().natureStr );
-            item.setPrev1Pos(wPrev1Pos);  item.setPrev2Pos(wPrev2Pos);
-
-            //4：获取该词在句子中的的位置
-            beginIndex = sentence.getContent().indexOf(wContent, beginIndex);
-            item.setPositionInLine( beginIndex );
-
-            //6：获取该词在连词词典中出现的次数,以及歧义性
-            double occurTime = 0.0, ambiguity = 1.0;
-
-            if( Resource.allWordsDict.containsKey(wContent) )
-            {
-                DSAWordDictItem wordDictItem = Resource.allWordsDict.get(wContent);
-                occurTime = wordDictItem.getExpNum();
-                ambiguity = wordDictItem.getMostExpProbality();
-            }
-
-            item.setAmbiguity(ambiguity);
-            item.setOccurInDict(occurTime);
-
-            //5: 设置标签，因为是预测，可以随意设置标签, 默认不是连词
-            if(occurTime < 3) item.setLabel( Constants.Labl_Not_ConnWord );
-            else item.setLabel( Constants.Labl_is_ConnWord );
-
-            //设置连词出现次数以及不作为连词出现次数
-            Integer connNum    = Resource.allWordsDict.get(wContent).getExpNum();
-            Integer notConnNum = Resource.NotAsDiscourseWordDict.get(wContent);
-
-            if( connNum == null )    connNum = 0;
-            if( notConnNum == null ) notConnNum = 0;
-
-            item.setConnNum(connNum);
-            item.setNotConnNum(notConnNum);
-
-            candidateTerms.add(item);
-        }
-
-        //b: 使用最大熵模型判断论元位置为PS或SS
-        ArrayList results = new ArrayList();
-        for( ConnVectorItem item : candidateTerms )
-        {
-            String str = item.getContent() + " " + item.getPos() + " " + item.getPrev1Pos() + " " + item.getPrev2Pos();
-            results.add(str);
-        }
-        util.writeLinesToFile("D:\\output.txt",results);
-    }
-
 
     /**
      * 为了区分一个连词是句间连词还是句内连词，在识别了连词之后，需要首先判断连词是连接句内关系还是连接句间关系。
      * DSAConnective里面有一个属性：isInterConnective
      **/
-    private void markConnAsInterOrCross(DSASentence sentence)
-    {
+    private boolean markConnAsInterOrCross(DSASentence sentence) throws IOException {
+        boolean argPosition = true;
+        ArrayList results = new ArrayList();
+
         for(DSAConnective curWord:sentence.getConWords() )
         {
             String wContent = curWord.getContent();
@@ -456,11 +372,31 @@ public class DiscourseParser
             if( temp.contains("，") || temp.contains(",") ) inSentenceHead = false;
 
             if( numInP2 > numInP3 && inSentenceHead ) curWord.setInterConnective(false);
+
+            if(curWord.getInterConnective())        //SS
+            {
+                argPosition = true;
+//              String str = item.getContent() + " " + item.getPos() + " " + item.getPrev1Pos() + " " + item.getPrev2Pos()  + " " + item.getPositionInLine() + "SS";
+                String str = curWord.getContent() + " " + curWord.getPosTag() + " " + curWord.getPrevPosTag() + " " + curWord.getPositionInLine() + " SS";
+                results.add(str);
+            }
+            else            //PS
+            {
+                argPosition = false;
+//              String str = item.getContent() + " " + item.getPos() + " " + item.getPrev1Pos() + " " + item.getPrev2Pos()  + " " + item.getPositionInLine() + "PS";
+                String str = curWord.getContent() + " " + curWord.getPosTag() + " " + curWord.getPrevPosTag() + " " + curWord.getPositionInLine() + " PS";
+                results.add(str);
+            }
+
         }
+
+        util.appendMethodB("D:\\arg_pos.txt",results);
+        return  argPosition;
+
     }
 
     /**
-     * 3: 查找一段文字中的并列连词，比如：不仅...而且,
+     * 3: 查找一段文字中的并列连词，比如：不仅...而且,      复合关联词的识别
      * 目前的识别方法只是识别了一个句子中最为可能的并列连词。即按照出现次数的大小来判断
      * @param sentence
      */
@@ -597,22 +533,6 @@ public class DiscourseParser
             sentence.getRelations().add(relation);
         }
     }
-
-
-    /*
-    Argument Extractor 论元抽取
-    首先，用最大熵估算概率将内部节点分成三类：Arg1 node、Arg2 node、None
-    然后，通过tree subtraction从句法树中抽取出arg1和arg2。
-     */
-    public void argumentExtractor(DSASentence sentence)
-    {
-        Tree phraseResult = this.phraseParser.parseLine( sentence.getSegContent() );
-
-//       List<T> listLeaves = new ArrayList<T>();
-       phraseResult.getLeaves();
-
-    }
-
 
 
     /**
@@ -811,7 +731,6 @@ public class DiscourseParser
             sentence.getRelations().add(interRelation);
         }
     }
-
 
     /**获取一个连词在短语结构树中所依附的EDU节点。最终返回的是该连词最直接所属的EDU节点**/
     private DSAEDU getConnectiveBelongEDU(DSAConnective curWord, DSAEDU rootEDU)
@@ -1330,8 +1249,7 @@ public class DiscourseParser
     //-----------------------3.1: Cross Sentence Sense Recognize-----------------
 
     /**判断一个段落中的两个句子是否存在显式的句间关系。**/
-    public boolean getCrossExpRelInPara(DSAParagraph para, DSASentence curSentence, DSASentence nextSentence)
-    {
+    public boolean getCrossExpRelInPara(DSAParagraph para, DSASentence curSentence, DSASentence nextSentence) throws IOException {
         boolean hasExpRel = false;
 
         //1: 首先判断是否存在connArgArg类型的关系
@@ -1650,10 +1568,11 @@ public class DiscourseParser
         System.out.println(sentence.getConWords().get(0).getArg2EDU().getContent());
          **/
 
-        DiscourseParser dp = new DiscourseParser(true);
-        //dp.parseRawFile(twoSentence, needSegment);
+        DiscourseParser dp = new DiscourseParser();
+        dp.parseRawFile(twoSentence, needSegment);
+        DSASentence dsaSentence = new DSASentence(test);
         //dp.countEDUAccuray();
-        dp.countEDUAccurayWithComma();
+        //dp.countEDUAccurayWithComma();
 //        this.argPositonWithML();
     }
 }
