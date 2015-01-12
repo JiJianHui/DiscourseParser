@@ -45,6 +45,44 @@ public class util
         return new String(filecontent);
     }
 
+
+//    public static String readFileToString(String fPath)
+//    {
+//        File file       = new File(fPath);
+//        Long filelength = file.length();
+//        String tempString = null;
+//        String content = null;
+//        byte[] filecontent = new byte[filelength.intValue()];
+//
+//        try
+//        {
+//            FileInputStream in = new FileInputStream(file);
+//            InputStreamReader isr = new InputStreamReader(in, "gbk");
+//            BufferedReader reader = null;
+//            reader = new BufferedReader(isr);
+//
+//            while ((tempString = reader.readLine()) != null) {
+//                content += tempString;
+//            }
+//
+//            isr.close();
+//            reader.close();
+//
+////            in.read(filecontent);
+//            in.close();
+//        }
+//        catch (FileNotFoundException e)
+//        {
+//            e.printStackTrace();
+//        }
+//        catch (IOException e)
+//        {
+//            e.printStackTrace();
+//        }
+////        return new String(filecontent);
+//        return content;
+//    }
+
     /**
      * 将一个字符串进行分割为句子的集合。注意此时的原始句子中还存在着一些非法字符需要自行处理：包括：换行符，非法符号等。
      * @param fileContent
@@ -413,6 +451,21 @@ public class util
         fw.close();
     }
 
+    public static void appendMethodB(String fileName, ArrayList<String> lines) throws  IOException{
+
+        FileWriter fw = new FileWriter(fileName, true);
+
+        for(String line : lines)
+        {
+            fw.write(line + "\r\n");
+        }
+
+        fw.close();
+
+    }
+
+
+
     public static void main(String argus[])
     {
         //测试句子分割
@@ -426,6 +479,7 @@ public class util
             System.out.println( "-----------------------------" );
             System.out.println( sentences.get(index) );
         }
+
     }
 
 
