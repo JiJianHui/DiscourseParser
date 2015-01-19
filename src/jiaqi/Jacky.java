@@ -131,7 +131,7 @@ public class Jacky {
 
             if(str1.equals("arg2") && str2.equals("arg2"))  a++;
 
-            if(str1.equals("arg2") && str2.equals("arg2"))  c++;
+            if(str1.equals("arg2") && !str2.equals("arg2"))  c++;
         }
 
         p = (double) a / sumOfTestArg2;
@@ -153,14 +153,14 @@ public class Jacky {
 
             if(str1.equals("None") && str2.equals("None"))  a++;
 
-            if(str1.equals("None") && str2.equals("None"))  c++;
+            if(str1.equals("None") && !str2.equals("None"))  c++;
         }
 
         p = (double) a / sumofTestNone;
         r = (double) a / (a + c);
         f = (double) (2 * p * r) / (p + r) ;
 
-        System.out.println("For argument postion classification: arg2 ");
+        System.out.println("For argument postion classification: None ");
         System.out.print("P is ");System.out.println(p);
         System.out.print("R is ");System.out.println(r);
         System.out.print("F is ");System.out.println(f);
@@ -185,7 +185,7 @@ public class Jacky {
 //        util.writeLinesToFile("D:\\output.txt",results);
 
         Jacky jacky = new Jacky();
-        jacky.computePostionPRF();;
+//        jacky.computePostionPRF();;
         jacky.computeArgExtPRF();
 
 
