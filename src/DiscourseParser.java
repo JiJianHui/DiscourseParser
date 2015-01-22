@@ -3,6 +3,10 @@ import entity.recognize.*;
 import entity.train.DSAWordDictItem;
 import entity.train.SenseRecord;
 import net.didion.jwnl.data.IndexWord;
+import opennlp.maxent.DataStream;
+import opennlp.maxent.GISModel;
+import opennlp.maxent.PlainTextByLineDataStream;
+import opennlp.maxent.io.SuffixSensitiveGISModelReader;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import train.svm.wordRecSVM;
 import train.svm.relRecSVM;
@@ -19,11 +23,9 @@ import train.relation.RelVectorItem;
 import train.word.ConnVectorItem;
 import resource.Resource;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
+import  train.maxent.Predict;
 
 /**
  * 篇章分析主程序，主要是为了完成Discourse Parser程序的编写，采用自底向上进行编写处理。
@@ -40,8 +42,31 @@ public class DiscourseParser
     private PhraseParser phraseParser;  //短语结构分析
     private ImpRelFeatureExtract impRelFeatureExtract;
 
+    public String getArg1() {
+        return arg1;
+    }
+
+    private String arg1;
+
+    public void setArg1(String arg1) {
+        this.arg1 += " " + arg1;
+    }
+
+    public void setArg2(String arg2) {
+        this.arg2 += arg2;
+    }
+
+    public String getArg2() {
+        return arg2;
+    }
+
+    private String arg2;
+
+
     public DiscourseParser() throws DocumentException, IOException
     {
+        arg1 = "";
+        arg2 = "";
         //1: 加载词典信息
         Resource.LoadExpConnectivesDict();
 
@@ -124,14 +149,17 @@ public class DiscourseParser
      */
     public void processSentence(DSASentence sentence, boolean needSegment) throws IOException
     {
+        int id = 0;
         boolean argPosition = true;     //默认将论元位置设置为SS
         //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
         this.preProcess(sentence, needSegment);
 
         //2: 识别单个连词和识别并列连词：不仅...而且
         this.findConnWordWithML(sentence);
-        argPosition = this.markConnAsInterOrCross(sentence);
+        argPosition = this.markConnAsInterOrCross(sentence,id);
         this.findParallelWord(sentence);
+
+
 
         //4: 将句子按照短语结构拆分成基本EDU
         //this.findArgumentInLine(sentence);
@@ -140,6 +168,11 @@ public class DiscourseParser
         //4.1：避免出现句子结构非法的Sentence
         if( !tempResult ){ sentence.setIsCorrect(false); return; }
 
+        if(argPosition)         //论元位置为SS
+        {
+            //内部节点分类：Arg1、Arg2、None
+            argLaberler(sentence);      //抽取特征，将句法树内部节点进行分类：Arg1 Node、Arg2 Node、None
+        }
 
 
         //5: 确定每个连词所涉及到的两个EDU来产生候选显式关系
@@ -168,7 +201,7 @@ public class DiscourseParser
 
         //2: 识别单个连词
         this.findConnWordWithML(sentence);
-        this.markConnAsInterOrCross(sentence);
+//        this.markConnAsInterOrCross(sentence);        //训练
 
         //3: 识别并列连词：不仅...而且
         this.findParallelWord(sentence);
@@ -338,10 +371,15 @@ public class DiscourseParser
     /**
      * 为了区分一个连词是句间连词还是句内连词，在识别了连词之后，需要首先判断连词是连接句内关系还是连接句间关系。
      * DSAConnective里面有一个属性：isInterConnective
-     **/
-    private boolean markConnAsInterOrCross(DSASentence sentence) throws IOException {
+     * @param sentence
+     * @return
+     * @throws IOException
+     */
+    private boolean markConnAsInterOrCross(DSASentence sentence,int id) throws IOException {
         boolean argPosition = true;
         ArrayList results = new ArrayList();
+
+//      a. 抽取特征
 
         for(DSAConnective curWord:sentence.getConWords() )
         {
@@ -371,32 +409,154 @@ public class DiscourseParser
             String temp = sentence.getContent().substring(0, position);
             if( temp.contains("，") || temp.contains(",") ) inSentenceHead = false;
 
-            if( numInP2 > numInP3 && inSentenceHead ) curWord.setInterConnective(false);
+            if( numInP2 > numInP3 || inSentenceHead ) curWord.setInterConnective(false);
 
-            if(curWord.getInterConnective())        //SS
-            {
-                argPosition = true;
-//              String str = item.getContent() + " " + item.getPos() + " " + item.getPrev1Pos() + " " + item.getPrev2Pos()  + " " + item.getPositionInLine() + "SS";
-                String str = curWord.getContent() + " " + curWord.getPosTag() + " " + curWord.getPrevPosTag() + " " + curWord.getPositionInLine() + " SS";
-                results.add(str);
-            }
-            else            //PS
-            {
-                argPosition = false;
-//              String str = item.getContent() + " " + item.getPos() + " " + item.getPrev1Pos() + " " + item.getPrev2Pos()  + " " + item.getPositionInLine() + "PS";
-                String str = curWord.getContent() + " " + curWord.getPosTag() + " " + curWord.getPrevPosTag() + " " + curWord.getPositionInLine() + " PS";
-                results.add(str);
-            }
+
+            //5：抽取特征，用于论元位置分类
+            String str = curWord.getContent() + " " + curWord.getPosTag() + " " + curWord.getPrevPosTag() + " " + curWord.getPositionInLine();
+            results.add(str);
 
         }
 
-        util.appendMethodB("D:\\arg_pos.txt",results);
+        util.writeLinesToFile("arg_pos.test.txt",results);
+
+//      b.采用最大熵分类器进行分类
+        Predict predictor = null;
+        String modelFileName = "arg_posModel.txt";
+        try {
+            GISModel m =
+                    new SuffixSensitiveGISModelReader(
+                            new File(modelFileName)).getModel();
+            predictor = new Predict(m);
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
+
+        try {
+            DataStream ds =
+                    new PlainTextByLineDataStream(
+                            new FileReader(new File("arg_pos.test.txt")));
+
+            while (ds.hasNext()) {
+                String s = (String)ds.nextToken();
+                String result=predictor.eval(s.substring(0, s.lastIndexOf(' ')));
+
+                if(result.equals("PS"))     {
+                    argPosition = false;
+                }
+                else                      {
+                    argPosition = true;
+                }
+             }
+        }
+        catch (Exception e) {
+            System.out.println("Unable to read from specified file: "
+                    + "arg_pos.test");
+            System.out.println();
+
+        }
+
         return  argPosition;
 
     }
 
+
+    private boolean markConnAsInterOrCross(DSASentence sentence,int id,Boolean train) throws IOException {
+        boolean argPosition = true;
+        ArrayList results = new ArrayList();
+        ArrayList resultsForTest = new ArrayList();
+
+        for(DSAConnective curWord:sentence.getConWords() )
+        {
+            String wContent = curWord.getContent();
+
+            //1: 获取该连词在p2和p3中分别出现的次数
+            int numInP2 = 0, numInP3 = 0;
+            if( Resource.ConnInP2AndP3.containsKey(wContent) )
+            {
+                numInP2 = Resource.ConnInP2AndP3.get(wContent)[0];
+                numInP3 = Resource.ConnInP2AndP3.get(wContent)[1];
+            }
+
+            //2：获取该连词连接Arg的类型
+            int argConnArg = 0, connArgArg = 0;
+            if( Resource.ConnectiveArgNum.containsKey(wContent) )
+            {
+                argConnArg = Resource.ConnectiveArgNum.get(wContent)[0];
+                connArgArg = Resource.ConnectiveArgNum.get(wContent)[1];
+            }
+
+            //3: 连词位于句子中间的位置, 是否位于句首
+            int position = (int) curWord.getPositionInLine();
+
+            //4：是否位于第一个短句内
+            boolean inSentenceHead = true;
+            String temp = sentence.getContent().substring(0, position);
+            if( temp.contains("，") || temp.contains(",") ) inSentenceHead = false;
+
+            if( numInP2 > numInP3 || inSentenceHead ) curWord.setInterConnective(false);
+
+
+            //5：抽取特征，用于论元位置分类
+
+
+
+            String str = curWord.getContent() + " " + curWord.getPosTag() + " " + curWord.getPrevPosTag() + " " + curWord.getPositionInLine();
+
+            if(id < 6053)
+            {
+                //用于训练
+                if(curWord.getInterConnective())        //SS
+                {
+                    argPosition = true;
+                    str += " SS";
+                    results.add(str);
+                }
+                else            //PS
+                {
+                    argPosition = false;
+                    str += " PS";
+                    results.add(str);
+                }
+
+                util.appendMethodB(".\\arg_pos.txt",results);       //测试
+            }
+
+            else
+            {
+                //用于测试
+                String string;
+                if(curWord.getInterConnective())        //SS
+                {
+                    argPosition = true;
+                    string = "SS";
+                    results.add(str);
+                    resultsForTest.add(string);
+                }
+                else            //PS
+                {
+                    argPosition = false;
+                    string = "PS";
+                    results.add(str);
+                    resultsForTest.add(string);
+                }
+
+                util.appendMethodB(".\\arg_pos.test",results);
+                util.appendMethodB(".\\result2.txt",resultsForTest);
+            }
+
+        }
+
+        return  argPosition;
+    }
+
+
+
+
     /**
-     * 3: 查找一段文字中的并列连词，比如：不仅...而且,      复合关联词的识别
+     * 3: 查找一段文字中的复合关联词，比如：不仅...而且
      * 目前的识别方法只是识别了一个句子中最为可能的并列连词。即按照出现次数的大小来判断
      * @param sentence
      */
@@ -539,9 +699,14 @@ public class DiscourseParser
      * 根据短语结构分析器来获取对应的短语结构。并以此来获取基本EDU。注意输入的的是预处理(分好词)之后的DSASentence
      * @param sentence
      */
-    public boolean findArgumentWithPhraseParser(DSASentence sentence)
-    {
-        Tree phraseResult = this.phraseParser.parseLine( sentence.getSegContent() );
+    public boolean findArgumentWithPhraseParser(DSASentence sentence) throws IOException {
+        Tree phraseResult;
+        try{
+            phraseResult = this.phraseParser.parseLine( sentence.getSegContent() );
+        }
+        catch (OutOfMemoryError e){
+            return false;
+        }
 
         //1: 递归的构建基本EDU，主要是获取各个部分的EDU的树根
         DSAEDU rootEDU = new DSAEDU(sentence.getContent(), sentence.getContent());
@@ -566,13 +731,347 @@ public class DiscourseParser
         return  true;
     }
 
+    /**
+     * 论元特征抽取，用于最大熵分类句法树中的节点：Arg1 node、Arg2 node 、None
+     *抽取特征：连词的字符串、连词的句法分类（单个连词、并列连词）、连词左兄弟的个数、连词右兄弟的个数、路径P以及连词C的左兄弟的个数是否大于1，节点C的相对位置(左、中、右)
+     * @param sentence
+     * @throws IOException
+     */
+    public void argLaberler(DSASentence sentence) throws IOException {
+
+//        将句子按照短语结构拆分成基本EDU
+
+        DSAEDU rootEDU = sentence.getRootEDU();
+        ArrayList<DSAConnective> conns = sentence.getConWords();
+        String arg1Content = "",arg2Content = "";
+        boolean  result = false;
+
+//      标记句法树中的每一个节点
+
+        Tree rootTree = rootEDU.getRoot();
+
+        for( Tree child : rootTree.children() )
+        {
+            //不考虑单链泛化的孩子节点：类似于：他->Pron->N之类的
+            if( child.depth() == child.size() - 1 ) continue;
+
+            DSAEDU curEDU = new DSAEDU();
+            curEDU.setRoot(child);
+            curEDU.setParentEDU(rootEDU);
+            curEDU.setDepth( rootEDU.getDepth() + 1 );
+
+            boolean temp = getEDUsFromRoot( curEDU );
+
+            if( temp ) rootEDU.getChildrenEDUS().add(curEDU);
+
+            result = result || temp;
+
+//          nClass为分类结果
+            int nClass = InnerNodeClassification(child,sentence);
+
+            if(1 == nClass){
+                this.setArg1(this.getRootContent(child));
+            }
+            else if(2 == nClass){
+                this.setArg2(this.getRootContent(child));
+            }
+            else continue;
+        }
+
+    }
+
+    /**
+     * 句法树内部结点的最大熵分类模型 训练过程
+     * @param tree,senseRecord
+     * @return
+     * @throws IOException
+     */
+    private int InnerNodeClassificationTrain(Tree tree,SenseRecord senseRecord,int index) throws IOException
+    {
+        String text,arg1Content,arg2Content;
+;       int type = 0;
+
+        text        = senseRecord.getText();
+        arg1Content = senseRecord.getArg1();
+        arg2Content = senseRecord.getArg2();
+
+        DSASentence sentence = new DSASentence(text);
+        sentence.setSegContent(text);
+        sentence.setId(index++);
+
+        this.preProcess(sentence,false);
+        this.findConnWordWithML(sentence);
+        this.markConnAsInterOrCross(sentence,index);
+        this.findParallelWord(sentence);
+        this.findArgumentWithPhraseParser(sentence);
+
+        DSAEDU rootEDU = sentence.getRootEDU();
+        ArrayList featureList = new ArrayList();
+        ArrayList classResult = new ArrayList();
+        int leftSiblings = 0 ,rightSiblings = 0;
+        ArrayList<DSAConnective> conns = sentence.getConWords();
+
+        for( DSAConnective curWord : conns )
+        {
+//            if( !curWord.getInterConnective() ) continue;
+
+            String wContent = curWord.getContent();
+            ConnVectorItem conn = new ConnVectorItem(wContent);
+
+            DSAEDU connEDU  = this.getConnectiveBelongEDU(curWord, rootEDU);
+            int numChildren;
+            DSAEDU parrentEDU;
+
+//            Tree parrentTree = connEDU.getRoot().parent();
+//            Tree parrentTree = parrentEDU.getRoot();
+//            connEDU.getBeginIndex();
+//            int numChildren = parrentTree.numChildren();
+
+            try {
+                parrentEDU = connEDU.getParentEDU();
+                numChildren = parrentEDU.getRoot().numChildren();
+            }
+            catch(NullPointerException e){
+                continue;
+            }
+
+
+            for(DSAEDU dsaEDU :parrentEDU.getChildrenEDUS() ){
+                if(!dsaEDU.equals(connEDU)) {
+                    leftSiblings += 1;
+                }
+                else break;
+            }
+
+            rightSiblings = numChildren - leftSiblings - 1;
+
+            if( connEDU == null )
+            {
+                System.out.print("[--Error--] Not Found " + wContent + "'s EDU In ");
+                System.out.println(sentence.getContent());
+                curWord.setIsConnective(false);
+                continue;
+            }
+
+            List<Tree> listPath = tree.pathNodeToNode(connEDU.getRoot(),tree);
+
+            int leftSiblingsGreaterThanOne = (leftSiblings>1)?1:0;
+
+            String results = "";
+//                results += getRootContent(dsaedu.getRoot()) + " ";
+//                results = curWord.getContent() + curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings + " "  + listPath.toString() + " " +  leftSiblingsGreaterThanOne ;
+            results += curWord.getContent() + " " + curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings +  " " +  leftSiblingsGreaterThanOne ;
+
+            DSASentence dsaSentence1 = new DSASentence(arg1Content);
+            DSASentence dsaSentence2 = new DSASentence(arg2Content);
+            String strType ;
+
+            if(dsaSentence1.getContent().contains(getRootContent(tree))){
+                strType = "arg1";
+                type = 1;
+            }
+            else if(dsaSentence2.getContent().contains(getRootContent(tree))){
+                strType = "arg2";
+                type = 2;
+            }
+            else {
+                strType = "None";
+                type = 0;
+            }
+
+            if(index < 6053)
+            {
+                results += " " + strType; /* + " " + dsaedu.getRoot().toString() */
+                featureList.add(results);
+                util.appendMethodB("./arg_ext.txt", featureList);
+
+            }
+            else
+            {
+                featureList.add(results);
+                util.appendMethodB("./arg_ext.test", featureList);
+                classResult.add(strType);
+                util.appendMethodB("./result3.txt",classResult);
+            }
+
+        }
+
+        return type;
+    }
+
+
+    /**
+     *句法树内部节点分类:1）抽取特征；2）最大熵分类
+     * @param tree,sentence
+     * @throws IOException
+     */
+    private int InnerNodeClassification(Tree tree, DSASentence sentence) throws IOException
+    {
+
+        int nType = 0;
+//      1. 特征抽取
+        DSAEDU rootEDU = sentence.getRootEDU();
+        ArrayList featureList = new ArrayList();
+
+        int leftSiblings = 0 ,rightSiblings = 0;
+        ArrayList<DSAConnective> conns = sentence.getConWords();
+
+        int times = 0;
+        for( DSAConnective curWord : conns )
+        {
+
+            System.out.println("Times are " + times);
+            times ++;
+
+            if( !curWord.getInterConnective() ) continue;
+
+            String wContent = curWord.getContent();
+            ConnVectorItem conn = new ConnVectorItem(wContent);
+
+            DSAEDU connEDU  = this.getConnectiveBelongEDU(curWord, rootEDU);
+            DSAEDU parrentEDU;
+
+            connEDU.getBeginIndex();
+
+            int numChildren;
+            try {
+                parrentEDU = connEDU.getParentEDU();
+                numChildren = parrentEDU.getRoot().numChildren();
+            }
+            catch(NullPointerException e){
+                continue;
+            }
+
+            for(DSAEDU dsaEDU :parrentEDU.getChildrenEDUS() ){
+                if(!dsaEDU.equals(connEDU)) {
+                    leftSiblings += 1;
+                }
+                else break;
+            }
+
+            rightSiblings = numChildren - leftSiblings - 1;
+
+            if( connEDU == null )
+            {
+                System.out.print("[--Error--] Not Found " + wContent + "'s EDU In ");
+                System.out.println(sentence.getContent());
+                curWord.setIsConnective(false);
+                continue;
+            }
+
+//            List<Tree> listPath = dsaedu.getRoot().pathNodeToNode(connEDU.getRoot(),dsaedu.getRoot());
+            List<Tree> listPath = tree.pathNodeToNode(connEDU.getRoot(),tree);
+
+            int leftSiblingsGreaterThanOne = (leftSiblings>1)?1:0;
+
+            String results = "";
+//            results = curWord.getContent() + curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings + " "  + listPath.toString() + " " +  leftSiblingsGreaterThanOne ;
+            results = curWord.getContent() + " " +  curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings +  " " +  leftSiblingsGreaterThanOne ;
+            featureList.add(results);
+        }
+
+        util.writeLinesToFile(".\\arg_ext.test.txt",featureList);
+
+//      2.最大熵分类模型
+        String strType = "";
+        Predict predictor = null;
+        String modelFileName = "arg_extModel.txt";
+        try {
+            GISModel m =
+                    new SuffixSensitiveGISModelReader(
+                            new File(modelFileName)).getModel();
+            predictor = new Predict(m);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
+
+        try {
+            DataStream ds =
+                    new PlainTextByLineDataStream(
+                            new FileReader(new File("arg_ext.test.txt")));
+
+            while (ds.hasNext()) {
+                String s = (String)ds.nextToken();
+                String result=predictor.eval(s.substring(0, s.lastIndexOf(' ')));
+
+                if(result.equals("arg1"))     {
+                    strType = "arg1";
+                    nType = 1;
+                }
+                else if(result.equals("arg2")){
+                    strType = "arg2";
+                    nType = 2;
+                }
+                else {
+                    strType = "None";
+                    nType = 0;
+                }
+            }
+        }
+        catch (Exception e) {
+            System.out.println("Unable to read from specified file: "
+                    + "arg_ext.test");
+            System.out.println();
+
+        }
+
+        return nType;
+    }
+
+//   private String getConnectFeatures()
+//   {
+//       String results = "";
+//       int leftSiblings = 0 ,rightSiblings = 0;
+//       ArrayList<DSAConnective> conns = sentence.getConWords();
+//
+//       for( DSAConnective curWord : conns )
+//       {
+//           if( !curWord.getInterConnective() ) continue;
+//
+//           String wContent = curWord.getContent();
+//           ConnVectorItem conn = new ConnVectorItem(wContent);
+//
+//           DSAEDU connEDU  = this.getConnectiveBelongEDU(curWord, rootEDU);
+//           DSAEDU parrentEDU = connEDU.getParentEDU();
+//
+//           connEDU.getBeginIndex();
+//           int numChildren = parrentEDU.getChildrenEDUS().size();
+//
+//           for(DSAEDU dsaEDU :parrentEDU.getChildrenEDUS() ){
+//               if(!dsaEDU.equals(connEDU)) {
+//                   leftSiblings += 1;
+//               }
+//               else break;
+//           }
+//
+//           rightSiblings = numChildren - leftSiblings - 1;
+//
+//           if( connEDU == null )
+//           {
+//               System.out.print("[--Error--] Not Found " + wContent + "'s EDU In ");
+//               System.out.println(sentence.getContent());
+//               curWord.setIsConnective(false);
+//               continue;
+//           }
+//
+//           int leftSiblingsGreaterThanOne = (leftSiblings>1)?1:0;
+//
+//           results = curWord.getContent() + " " + leftSiblings + " " + rightSiblings + " " +  leftSiblingsGreaterThanOne;
+//       }
+//
+//        return  results;
+//   }
+
+
+
+
 
     /**
      * 从树根开始，递归的构建EDU树，每层树根只能包含直接孩子节点的EDU，一直递归下去。
      * 此次获取到的只是简单的每个EDU在树形结构中的Root，后续需要再处理。
      **/
-    private boolean getEDUsFromRoot(DSAEDU rootEDU)
-    {
+    private boolean getEDUsFromRoot(DSAEDU rootEDU ) throws IOException {
         boolean  result = false;
 
         //递归处理各个孩子节点
@@ -591,6 +1090,55 @@ public class DiscourseParser
             if( temp ) rootEDU.getChildrenEDUS().add(curEDU);
 
             result = result || temp;
+
+            DSASentence sentence;
+            try {
+                sentence = new DSASentence(curEDU.getRoot().toString());
+            }
+            catch (NullPointerException e){
+                continue;
+            }
+
+        }
+        //判断当前节点是否构成了一个最基本的EDU,递归终止条件
+        if( rootEDU.getRoot().nodeString().equalsIgnoreCase("vp") )
+        {
+            if( rootEDU.getRoot().children().length > 1 ) result = true;
+        }
+        if( rootEDU.getRoot().nodeString().equalsIgnoreCase("np") )
+        {
+            result = false;
+        }
+
+        return result;
+    }
+
+    /**
+     * 获取EDU，用于训练分类模型
+     * @param rootEDU
+     * @param senseRecord
+     * @return
+     * @throws IOException
+     */
+    private boolean getEDUsFromRoot(DSAEDU rootEDU,SenseRecord senseRecord) throws IOException {
+        boolean  result = false;
+
+        //递归处理各个孩子节点
+        for( Tree child : rootEDU.getRoot().children() )
+        {
+            //不考虑单链泛化的孩子节点：类似于：他->Pron->N之类的
+            if( child.depth() == child.size() - 1 ) continue;
+
+            DSAEDU curEDU = new DSAEDU();
+            curEDU.setRoot(child);
+            curEDU.setParentEDU(rootEDU);
+            curEDU.setDepth( rootEDU.getDepth() + 1 );
+
+            boolean temp = getEDUsFromRoot( curEDU ,senseRecord);
+
+            if( temp ) rootEDU.getChildrenEDUS().add(curEDU);
+
+            result = result || temp;
         }
 
         //判断当前节点是否构成了一个最基本的EDU,递归终止条件
@@ -605,6 +1153,8 @@ public class DiscourseParser
 
         return result;
     }
+
+
 
     /**
      * 对基本EDU进行整理，此步骤主要是为了清除多余的EDU，主要是将单链进行合并。对只有一个EDU的root进行向上泛化
@@ -712,10 +1262,14 @@ public class DiscourseParser
             }
 
             //d: 确定arg2包括的内容：从arg2EDU开始，向右的所有内容
-            String arg2Content = this.getArg2Content(curWord, connEDU);
+            //将句法树中所有标记为arg2 Node的节点组装起来
+//            String arg2Content = this.getArg2Content(curWord, connEDU);
+            String arg2Content = this.getArg2();
 
-            //e: 确定arg1包括的内容：这个就比较悲剧了。
-            String arg1Content = this.getArg1Content(curWord, connEDU);
+            //e: 确定arg1包括的内容：这个就比较悲剧了。                    //将句法树中所有标记为arg1 Node的节点组装起来
+//            String arg1Content = this.getArg1Content(curWord, connEDU);
+            this.setArg1("我 听到 过 很多 解释");
+            String arg1Content = this.getArg1();
 
             if( arg2Content == null || arg2Content.length() < 2 ){ curWord.setIsConnective(false); continue; }
             if( arg1Content == null || arg1Content.length() < 2 ){ curWord.setInterConnective(false); continue;}
@@ -731,6 +1285,43 @@ public class DiscourseParser
             sentence.getRelations().add(interRelation);
         }
     }
+
+
+    //在句法结构树中找到关联词节点
+    private  Tree getConnectiveInTree(DSAConnective curWord,DSAEDU rootEDU)
+    {
+        int index = 0;
+
+        Tree curWordNode = null;
+        String  wContent = curWord.getContent();
+
+        List<Tree> phraseLeaves = rootEDU.getRoot().getLeaves();
+
+        for( Tree curNode : phraseLeaves )
+        {
+            String curWordContent = curNode.nodeString();
+
+            if( curWordContent.equalsIgnoreCase(wContent) )
+            {
+                if( Math.abs( curWord.getPositionInLine() - index ) < 3 )
+                {
+                    curWordNode = curNode;
+                    break;
+                }
+            }
+            index = index + curWordContent.length();
+        }
+
+        if( curWordNode == null )
+        {
+            System.out.print("[--Error--] Not Found " + wContent + "'s Tree Node In ");
+            System.out.print(rootEDU.getContent());
+            return null;
+        }
+
+        return curWordNode;
+    }
+
 
     /**获取一个连词在短语结构树中所依附的EDU节点。最终返回的是该连词最直接所属的EDU节点**/
     private DSAEDU getConnectiveBelongEDU(DSAConnective curWord, DSAEDU rootEDU)
@@ -807,7 +1398,6 @@ public class DiscourseParser
     private String getArg2Content(DSAConnective connWord, DSAEDU arg2EDU)
     {
         String arg2Content = "";
-
         if( arg2EDU.getChildrenEDUS().size() < 2 )
         {
             connWord.getArg2Nodes().add( arg2EDU.getRoot() );
@@ -847,8 +1437,22 @@ public class DiscourseParser
                 }
             }
         }
+     return  arg2Content;
+    }
 
-        return  arg2Content;
+
+    /**
+     *将句法树中所有标记为arg2 Node的节点组装起来
+     * @param connWord
+     * @param arg2EDU
+     * @return
+     */
+    private String getArg2ContentNew(DSAConnective connWord, DSAEDU arg2EDU)
+    {
+        String arg2Content = "";
+
+
+        return arg2Content;
     }
 
     /*** 判断一个句法分析树中的节点是否是EDU节点。*/
@@ -890,14 +1494,13 @@ public class DiscourseParser
         return null;
     }
 
-
     private String getArg1Content(DSAConnective connWord, DSAEDU arg2EDU)
     {
+        String arg1Content = "";
         String wContent = connWord.getContent();
         int argConnArg  = Resource.ConnectiveArgNum.get(wContent)[0];
         int connArgArg  = Resource.ConnectiveArgNum.get(wContent)[1];
 
-        String arg1Content;
 
         if( argConnArg > connArgArg )
         {
@@ -907,6 +1510,13 @@ public class DiscourseParser
         {
             arg1Content = this.getConnArgArgContent(connWord, arg2EDU);
         }
+        return arg1Content;
+    }
+
+    //    将句法树中标记为Arg1 Node 的内部节点组装起来
+    private String getArg1ContentNew(DSAConnective connWord, DSAEDU arg2EDU)
+    {
+        String arg1Content = "";
 
         return arg1Content;
     }
@@ -1361,8 +1971,7 @@ public class DiscourseParser
 
      //-----------------------4：计算数据-----------------
     /**计算EDU切分代码的准确度**/
-    public void countEDUAccuray() throws  DocumentException
-    {
+    public void countEDUAccuray() throws DocumentException, IOException {
         Resource.LoadRawRecord();
         this.phraseParser = new PhraseParser();
 
@@ -1544,6 +2153,211 @@ public class DiscourseParser
 
     }
 
+    /**
+     * 句法树内部结点分类
+     * @throws IOException
+     */
+    private void train( ) throws IOException
+    {
+        String arg1Content = "",arg2Content = "",text;
+        int index = 0;
+
+        int nClass = 0;
+//      标记句法树中的每一个节点
+
+        for(SenseRecord senseRecord: Resource.Raw_Train_Annotation_p3)
+        {
+
+            try{
+                text = senseRecord.getText();
+
+                DSASentence sentence = new DSASentence(text);
+                sentence.setSegContent(text);
+                sentence.setId(index);
+
+                this.preProcess(sentence,false);
+                this.findConnWordWithML(sentence);
+                this.markConnAsInterOrCross(sentence,index);
+                this.findParallelWord(sentence);
+
+                index++;
+                System.out.println("SenseRecord number is :" + index);
+
+
+                this.findArgumentWithPhraseParser(sentence);
+
+                DSAEDU rootEDU = sentence.getRootEDU();
+
+                for( Tree child : rootEDU.getRoot().children() )
+                {
+                    //不考虑单链泛化的孩子节点：类似于：他->Pron->N之类的
+                    if( child.depth() == child.size() - 1 ) continue;
+
+                    DSAEDU curEDU = new DSAEDU();
+                    curEDU.setRoot(child);
+                    curEDU.setParentEDU(rootEDU);
+                    curEDU.setDepth( rootEDU.getDepth() + 1 );
+
+                    boolean temp = getEDUsFromRoot( curEDU);
+//                    if( temp ) rootEDU.getChildrenEDUS().add(curEDU);
+
+                    InnerNodeClassificationTrain(child,senseRecord,index);
+                    if(1 == nClass)          setArg1(curEDU.getContent());
+                    else if(2 == nClass)     setArg2(curEDU.getContent());
+                    else  continue;;
+
+                }
+            }
+            catch ( NullPointerException e){
+                continue;
+            }
+        }
+
+    }
+
+
+    /**
+     * 论元位置分类
+     * @throws IOException
+     */
+    private void trainPosition( ) throws IOException
+    {
+        String arg1Content = "",arg2Content = "",text;
+        int index = 0;
+
+//      标记句法树中的每一个节点
+
+        for(SenseRecord senseRecord: Resource.Raw_Train_Annotation_p3)
+        {
+//            if(index++ < 6053)    continue;
+
+            text        = senseRecord.getText();
+
+            DSASentence sentence = new DSASentence(text);
+            sentence.setSegContent(text);
+            sentence.setId(index);
+
+            this.preProcess(sentence,false);
+            this.findConnWordWithML(sentence);
+            this.markConnAsInterOrCross(sentence,index,true);
+
+            this.findParallelWord(sentence);
+
+            index++;
+            System.out.print("SenseRecord number is :");
+            System.out.println(index);
+
+
+        }
+
+    }
+
+
+    /**
+     * 统计1字数、P2字数、P3字数、总字数
+     */
+    private void countWordNumbers()
+    {
+        String text,arg1Content,arg2Content;
+        long lWordNumberofP1 = 0,lWordNumberofP2 = 0 ,lWordNumberofP3 = 0,lWordNumberofTotal = 0;
+        long lRelationNumber = 0;
+
+        for(SenseRecord senseRecord: Resource.Raw_Train_Annotation_p1)
+        {
+
+            String strContent;
+            text        = senseRecord.getText();
+            strContent = text.replaceAll(" ","");
+
+            lWordNumberofP1 += strContent.length();
+        }
+
+        System.out.print("Total word number of P1 is ");
+        System.out.println(lWordNumberofP1);
+
+        for(SenseRecord senseRecord: Resource.Raw_Train_Annotation_p2)
+        {
+
+            String strContent;
+            text        = senseRecord.getText();
+            strContent = text.replaceAll(" ","");
+
+            lWordNumberofP2 += strContent.length();
+        }
+
+        System.out.print("Total word number of P2 is ");
+        System.out.println(lWordNumberofP2);
+
+        for(SenseRecord senseRecord: Resource.Raw_Train_Annotation_p3)
+        {
+            String strContent;
+            text        = senseRecord.getText();
+            strContent = text.replaceAll(" ","");
+
+            lWordNumberofP3 += strContent.length();
+        }
+        System.out.print("Total word number of P3 is ");
+        System.out.println(lWordNumberofP3);
+
+        for(SenseRecord senseRecord: Resource.Raw_Train_Annotation)
+        {
+
+            String strContent;
+            text        = senseRecord.getText();
+            strContent = text.replaceAll(" ","");
+
+            lWordNumberofTotal += strContent.length();
+            lRelationNumber ++;
+        }
+
+        System.out.print("Total word number is ");
+        System.out.println(lWordNumberofTotal);
+
+        System.out.print("Total relation number is ");
+        System.out.println(lRelationNumber);
+
+    }
+
+    /**
+     * 计算论元自动切分的准确率
+     * @throws DocumentException
+     */
+    public double   computeArgumentAccuracy() throws Exception {
+//        Resource.LoadRawRecord();
+
+        double  dAccuracy;
+
+        int nIndex = 0,nNumbers = 0;      //index 为Record的编号，而numbers是所选取的Record的编号
+        int nRight = 0;                 //得到正确论元的数目
+        for(SenseRecord record:Resource.Raw_Train_Annotation_p2)
+        {
+            if((nIndex % 3) != 0)    //随机抽取一些编号正好是3的倍数的record，如果不是3的倍数，则跳过；
+            {
+                nIndex ++;
+                continue;
+            }
+            else
+            {
+                if(nNumbers < 300)
+                {
+                    this.parseRawFile(record.getText(),false);
+
+                    if (this.getArg1().equals(record.getArg1()) && this.getArg2().equals(record.getArg2()))     nRight++;
+
+                    nIndex++;
+                    nNumbers++;
+                }
+                else  break;
+
+            }
+        }
+
+        dAccuracy = (double)nRight / nNumbers;
+
+        return dAccuracy;
+    }
+
+
     public static void main(String[] args) throws Exception
     {
         //DiscourseParser discourseParser = new DiscourseParser();
@@ -1558,6 +2372,8 @@ public class DiscourseParser
         //discourseParser.run(test);
         String twoSentence = "据 了解 ， 高行健 目前 已经 完成 了 一 部 新作 《 另 一 种 美 》 的 书稿 ， 并且 表示 能够 在 台湾 出版 。 高行健 １２月 １０号 将 在 瑞典 首都 斯德哥尔摩 举行 的 赠奖 仪式 当中 和 其他 诺贝尔 奖 得主 接受 瑞典 国王 卡尔 十六 世 古斯达夫 的 颁奖 。";
 
+        String line = "我 听到 过 很多 解释, 但是 我 觉得 我 从没有 看到 过 清晰 的 分析 。";
+
         boolean needSegment  = false;
         /**
         DSASentence sentence = new DSASentence(simple);
@@ -1569,11 +2385,18 @@ public class DiscourseParser
          **/
 
         DiscourseParser dp = new DiscourseParser();
-        dp.parseRawFile(twoSentence, needSegment);
-        DSASentence dsaSentence = new DSASentence(test);
+//        dp.parseRawFile(test, needSegment);
+
+        dp.computeArgumentAccuracy();
+
+//        dp.train();
+
+//        dp.trainPosition();
+//        dp.countWordNumbers();
+
+//        DSASentence dsaSentence = new DSASentence(test);
         //dp.countEDUAccuray();
         //dp.countEDUAccurayWithComma();
-//        this.argPositonWithML();
     }
 }
 
