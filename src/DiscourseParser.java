@@ -42,31 +42,8 @@ public class DiscourseParser
     private PhraseParser phraseParser;  //短语结构分析
     private ImpRelFeatureExtract impRelFeatureExtract;
 
-    public String getArg1() {
-        return arg1;
-    }
-
-    private String arg1;
-
-    public void setArg1(String arg1) {
-        this.arg1 += " " + arg1;
-    }
-
-    public void setArg2(String arg2) {
-        this.arg2 += arg2;
-    }
-
-    public String getArg2() {
-        return arg2;
-    }
-
-    private String arg2;
-
-
     public DiscourseParser() throws DocumentException, IOException
     {
-        arg1 = "";
-        arg2 = "";
         //1: 加载词典信息
         Resource.LoadExpConnectivesDict();
 
@@ -168,7 +145,8 @@ public class DiscourseParser
         //4.1：避免出现句子结构非法的Sentence
         if( !tempResult ){ sentence.setIsCorrect(false); return; }
 
-        if(argPosition)         //论元位置为SS
+        //论元位置为SS(分句关系)
+        if(argPosition)
         {
             //内部节点分类：Arg1、Arg2、None
             argLaberler(sentence);      //抽取特征，将句法树内部节点进行分类：Arg1 Node、Arg2 Node、None
@@ -770,10 +748,10 @@ public class DiscourseParser
             int nClass = InnerNodeClassification(child,sentence);
 
             if(1 == nClass){
-                this.setArg1(this.getRootContent(child));
+                sentence.setArg1(this.getRootContent(child));
             }
             else if(2 == nClass){
-                this.setArg2(this.getRootContent(child));
+                sentence.setArg2(this.getRootContent(child));
             }
             else continue;
         }
@@ -1263,13 +1241,18 @@ public class DiscourseParser
 
             //d: 确定arg2包括的内容：从arg2EDU开始，向右的所有内容
             //将句法树中所有标记为arg2 Node的节点组装起来
+
+            if(sentence.getArg1().isEmpty())   sentence.setArg1("论元 1 是 空的 ");
+            else  if(sentence.getArg2().isEmpty()) sentence.setArg2("论元 2 是 空的");
+
 //            String arg2Content = this.getArg2Content(curWord, connEDU);
-            String arg2Content = this.getArg2();
+            String arg2Content = sentence.getArg2();
 
             //e: 确定arg1包括的内容：这个就比较悲剧了。                    //将句法树中所有标记为arg1 Node的节点组装起来
 //            String arg1Content = this.getArg1Content(curWord, connEDU);
-            this.setArg1("我 听到 过 很多 解释");
-            String arg1Content = this.getArg1();
+            String arg1Content = sentence.getArg1();
+
+
 
             if( arg2Content == null || arg2Content.length() < 2 ){ curWord.setIsConnective(false); continue; }
             if( arg1Content == null || arg1Content.length() < 2 ){ curWord.setInterConnective(false); continue;}
@@ -2202,8 +2185,8 @@ public class DiscourseParser
 //                    if( temp ) rootEDU.getChildrenEDUS().add(curEDU);
 
                     InnerNodeClassificationTrain(child,senseRecord,index);
-                    if(1 == nClass)          setArg1(curEDU.getContent());
-                    else if(2 == nClass)     setArg2(curEDU.getContent());
+                    if(1 == nClass)          sentence.setArg1(curEDU.getContent());
+                    else if(2 == nClass)     sentence.setArg2(curEDU.getContent());
                     else  continue;;
 
                 }
@@ -2331,6 +2314,9 @@ public class DiscourseParser
         int nRight = 0;                 //得到正确论元的数目
         for(SenseRecord record:Resource.Raw_Train_Annotation_p2)
         {
+            String content = record.getText();
+            DSASentence sentence = new DSASentence(content);
+
             if((nIndex % 3) != 0)    //随机抽取一些编号正好是3的倍数的record，如果不是3的倍数，则跳过；
             {
                 nIndex ++;
@@ -2342,7 +2328,7 @@ public class DiscourseParser
                 {
                     this.parseRawFile(record.getText(),false);
 
-                    if (this.getArg1().equals(record.getArg1()) && this.getArg2().equals(record.getArg2()))     nRight++;
+                    if (sentence.getArg1().equals(record.getArg1()) && sentence.getArg2().equals(record.getArg2()))     nRight++;
 
                     nIndex++;
                     nNumbers++;
