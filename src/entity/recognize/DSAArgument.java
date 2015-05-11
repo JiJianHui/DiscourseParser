@@ -9,7 +9,7 @@ package entity.recognize;
 public class DSAArgument
 {
     private String content;
-    private String sentContent;
+    private String sentContent;     //
 
 
     private Integer beginIndex;

@@ -19,6 +19,7 @@ public class DSAConnective
     //连词识别相关特征
     private String posTag;
     private String prevPosTag;
+    private String prev2PosTag;
     private String nextPosTag;
     private double positionInLine;  //在实际的没有分词的内容下的位置
     private String depencyTag;  //依存分析的标签
@@ -37,6 +38,29 @@ public class DSAConnective
 
     private DSAEDU arg2EDU;
     private DSAEDU arg1EDU;
+
+    private String prev1;       //关联词前面的词
+    private String prev2;       //prev1前面的词
+
+    public void setArg1Content(String arg1Content) {
+        this.arg1Content = arg1Content;
+    }
+
+    public String getArg1Content() {
+        return arg1Content;
+    }
+
+    private String arg1Content;
+
+    public void setArg2Content(String arg2Content) {
+        this.arg2Content = arg2Content;
+    }
+
+    public String getArg2Content() {
+        return arg2Content;
+    }
+
+    private String arg2Content;
 
     private Integer depth;              //同EDU的层次一样，每个连词也有对应的depth.
 
@@ -71,6 +95,23 @@ public class DSAConnective
         this.arg1EDU   = null;
         this.arg2EDU   = null;
     }
+
+
+    public void setPrev1(String prev1) {
+        this.prev1 = prev1;
+    }
+    public String getPrev1() {
+        return prev1;
+    }
+
+    public void setPrev2(String prev2) {
+        this.prev2 = prev2;
+    }
+
+    public String getPrev2() {
+        return prev2;
+    }
+
 
 
     public String getStringContent()
@@ -120,6 +161,14 @@ public class DSAConnective
 
     public void setPrevPosTag(String prevPosTag) {
         this.prevPosTag = prevPosTag;
+    }
+
+    public void setPrev2PosTag(String prev2PosTag) {
+        this.prev2PosTag = prev2PosTag;
+    }
+
+    public String getPrev2PosTag() {
+        return prev2PosTag;
     }
 
     public String getNextPosTag() {

@@ -200,13 +200,18 @@ public class Resource
     /**加载旧版本关系体系下的标注语料**/
     public static void LoadOldRawRecord() throws DocumentException
     {
-    String fPath = "F:\\Distribution Data\\Corpus_pubGuoOnly\\XML";
-    Resource.LoadRawRecordFromPath(fPath);
-}
+//      String fPath = "F:\\Distribution Data\\Distribution Data HIT\\Corpus Data\\XML";
+        String fPath = "./Corpus Data/XML/";
+//        String fPath = "F:\\Distribution Data\\Corpus_pubGuoOnly\\XML";
+        Resource.LoadRawRecordFromPath(fPath);
+    }
 
+    /**New version **/
     public static void LoadRawRecord() throws DocumentException
     {
-        String fPath = "F:\\Distribution Data\\Distribution Data HIT\\Corpus Data\\XML";
+//        String fPath = "F:\\Distribution Data\\Distribution Data HIT\\Corpus Data\\XML";
+       String fPath = "./Corpus Data/XML/";
+
         Resource.LoadRawRecordFromPath(fPath);
     }
 
@@ -229,6 +234,7 @@ public class Resource
         {
             //System.out.println(fPath);
             String content   = util.readFileToString(fPath).replaceAll("\r\n", "");
+//            System.out.println(content);
             Document domObj  = DocumentHelper.parseText(content);
             Element rootNode = domObj.getRootElement();
 

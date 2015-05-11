@@ -63,7 +63,11 @@ public class WebServer
                 else{
 
                     DSAParagraph paragraph = dsaParser.parseRawFile(line, needSegment);
+
                     response = paragraph.toXML();
+
+                    System.out.println(response);
+
                     cache.put(line, response);
                 }
 

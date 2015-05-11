@@ -367,7 +367,11 @@ public class ImpRelFeatureExtract
             String arg2Content   = curRecord.getArg2();
 
             if( relType.equalsIgnoreCase(Constants.EXPLICIT) ) continue;
-            if(relNO.startsWith("1") || relNO.startsWith("3")) continue;
+            if(Constants.SenseVersion == Constants.OldSenseVersion)
+            {
+                if(relNO.startsWith("1") || relNO.startsWith("3")) continue;
+            }
+
             if( arg1Content.length() > 400 || arg2Content.length() > 400 ) continue;
 
             //进行分词来获取各个词的语义角色
@@ -467,6 +471,12 @@ public class ImpRelFeatureExtract
         {
             trainPath = "data/relation/oldImpRelTrainData.wordVector.txt";
             testPath  = "data/relation/oldImpRelTestData.wordVector.txt";
+            System.out.println(trainPath);
+        }
+        else
+        {
+            trainPath = "data/relation/impRelTrainData.wordVector.txt";
+            testPath  = "data/relation/impRelTestData.wordVector.txt";
             System.out.println(trainPath);
         }
 

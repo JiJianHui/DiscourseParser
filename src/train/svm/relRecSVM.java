@@ -253,8 +253,11 @@ public class relRecSVM
     public void testModelWithWordVector() throws IOException
     {
 
-        this.scaleTrainDataPath = "data/relation/oldImpRelTrainData.wordVector.txt";
-        this.scaleTestDataPath  = "data/relation/oldImpRelTestData.wordVector.txt";
+//        this.scaleTrainDataPath = "data/relation/oldImpRelTrainData.wordVector.txt";
+//        this.scaleTestDataPath  = "data/relation/oldImpRelTestData.wordVector.txt";
+        this.scaleTrainDataPath = "data/relation/impRelTrainData.txt";
+        this.scaleTestDataPath  = "data/relation/impRelTestData.txt";
+
 
         if(Constants.SenseVersion == Constants.NewSenseVersion )
         {

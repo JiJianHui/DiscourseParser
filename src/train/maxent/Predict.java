@@ -34,10 +34,9 @@ public class Predict {
 	_model = m;
     }
 
-    private String eval (String predicates) {
+    public String eval(String predicates) {
 	double[] ocs = _model.eval(_cg.getContext(predicates));
-	System.out.println("For context: " + predicates
-			   + "\n" + _model.getAllOutcomes(ocs) + "\n");
+//	System.out.println("For context: " + predicates	+ "\n" + _model.getAllOutcomes(ocs) + "\n");
 
         return _model.getBestOutcome(ocs);
     }

@@ -21,7 +21,6 @@ public class ConnVectorItem
     private String prevPos;
     private String nextPos;
     private String relateTag;
-    private String prev1Pos;
     private String prev2Pos;
     private String ssOrPs;         //标记类型：SS或PS
     private String prev1Content;
@@ -96,7 +95,7 @@ public class ConnVectorItem
         //this.posFeatures     = new double[Constants.posTagsNum];
         //this.nextPosFeatures = new double[Constants.posTagsNum];
        // this.prevPosFeatures = new double[Constants.posTagsNum];
-        this.ssOrPs = new String("PS");     //SS is more possible！
+        this.ssOrPs = new String("SS");     //SS is more possible！
 
         this.length          = 0;
         this.positionInLine  = -1;
@@ -172,14 +171,17 @@ public class ConnVectorItem
     {
         //获取pos, prevPos和nextPos的相对维数
         int posIndex  = 0, prevIndex    = 0, nextIndex = 0;
+        int prev2Index = 0;
         int connIndex = 0, notConnIndex = 0;
 
         if( pos == null )     pos = "w";
         if( prevPos == null ) prevPos = "w";
+        if( prev2Pos == null)  prev2Pos = "w";
         if( nextPos == null ) nextPos = "w";
 
         if( prevPos.equalsIgnoreCase("null") ) prevPos = "w";
         if( nextPos.equalsIgnoreCase("null") ) nextPos = "w";
+        if( prev2Pos.equalsIgnoreCase("null") )   prev2Pos = "w";
 
         for( int index = 0; index < Constants.ansjPosTagsNum; index++ )
         {
@@ -188,6 +190,7 @@ public class ConnVectorItem
             if( pos.equalsIgnoreCase(curPos) )     posIndex = index + 1;
             if( prevPos.equalsIgnoreCase(curPos) ) prevIndex = index + 1;
             if( nextPos.equalsIgnoreCase(curPos) ) nextIndex = index + 1;
+            if( prev2Pos.equalsIgnoreCase(curPos) ) prev2Index = index + 1;
         }
 
 
@@ -292,17 +295,11 @@ public class ConnVectorItem
         this.prevPos = prevPos;
     }
 
-    public void setPrev1Pos(String prevPos) {
-        this.prev1Pos = prevPos;
-    }
 
     public void setPrev2Pos(String prevPos) {
         this.prev2Pos = prevPos;
     }
 
-    public String getPrev1Pos() {
-        return prev1Pos;
-    }
 
     public String getPrev2Pos() {
         return prev2Pos;
