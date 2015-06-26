@@ -145,7 +145,7 @@ public class DiscourseParser
 //         {
 
         argPosition = this.markConnAsInterOrCross(sentence,id);
-        //        this.markConnAsInterOrCross(sentence);        原有方法
+        //        this.markConnAsInterOrCross(sentence);        原有方法,based on rules
         this.findParallelWord(sentence);
 
         //4: 将句子按照短语结构拆分成基本EDU
@@ -158,11 +158,11 @@ public class DiscourseParser
         //论元位置为SS(分句关系)
         for(DSAConnective curWord:sentence.getConWords() )
         {
-         Boolean isInterConnetive = curWord.getInterConnective();
-         if(isInterConnetive)
-         {
-             argLaberler(sentence);      //抽取特征，将句法树内部节点进行分类：Arg1 Node、Arg2 Node、None
-         }
+             Boolean isInterConnetive = curWord.getInterConnective();
+             if(isInterConnetive)
+             {
+                 argLaberler(sentence);      //抽取特征，将句法树内部节点进行分类：Arg1 Node、Arg2 Node、None
+             }
         }
 
         //5: 确定每个连词所涉及到的两个EDU来产生候选显式关系
@@ -343,10 +343,21 @@ public class DiscourseParser
             candidateTerms.add(item);
         }
 
-        //b: 使用SVM模型判断每个候选的词是否是连词
+        ArrayList<String> features = new ArrayList<String>();
+
+        //b: 使用模型判断每个候选的词是否是连词
         for( ConnVectorItem item : candidateTerms )
         {
-            int label = connSvmMode.predict(item);
+//            int label = connSvmMode.predict(item);
+            String strFeatures =  item.getContent() + " " + item.getLength() + " " + item.getPositionInLine() + " " +
+                    item.getAmbiguity() + " " + item.getOccurInDict() + " " + item.getPos() + " " +
+                    item.getPrevPos() + " " + item.getNextPos();
+            features.add(strFeatures);
+            util.writeLinesToFile("isConnective.test.txt",features);
+
+            String result = ClassifyViaMaximumEntrop("isConnectiveModel.txt","isConnective.test.txt");
+//            System.out.println("The result is " + result);
+            int label  = Integer.valueOf(result);
 
             if( label > 0 || item.getOccurInDict() > 100 )
             {
@@ -918,10 +929,12 @@ public class DiscourseParser
             int leftSiblingsGreaterThanOne = (leftSiblings>1)?1:0;
 
             String results = "";
-//            results += getRootContent(tree);
+//           results += getRootContent(tree);
 //                results += getRootContent(dsaedu.getRoot()) + " ";
 //                results = curWord.getContent() + curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings + " "  + listPath.toString() + " " +  leftSiblingsGreaterThanOne ;
-            results += curWord.getContent() + " " + curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings +  " " +  leftSiblingsGreaterThanOne ;
+//          results = curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings +  " " +  leftSiblingsGreaterThanOne ; // 4 dimention
+            results = curWord.getContent() + " " + curWord.getPosTag() + " " + leftSiblings + " " + rightSiblings +  " " +  leftSiblingsGreaterThanOne ;
+
 
 //            DSASentence dsaSentence1 = new DSASentence(arg1Content);
 //            DSASentence dsaSentence2 = new DSASentence(arg2Content);
@@ -2259,26 +2272,23 @@ public class DiscourseParser
      */
     private void train( ) throws IOException
     {
-        String arg1Content = "",arg2Content = "",text;
+
         int index = 0;
-
-        int nClass = 0;
 //      标记句法树中的每一个节点
-
         for(SenseRecord senseRecord: Resource.Raw_Train_Annotation_p3)
         {
 
-            if (senseRecord.getType().equalsIgnoreCase(Constants.IMPLICIT)) continue;
+            if (senseRecord.getType().equalsIgnoreCase(Constants.IMPLICIT)) continue;      //filter implicit relations.
 
+            int nClass = 0;
             String wConnective = senseRecord.getConnective();
+            String arg1Content = "",arg2Content = "";
+            String text = senseRecord.getText();
+            DSASentence sentence = new DSASentence(text);
+            sentence.setSegContent(text);
+            sentence.setId(index);
 
             try{
-                text = senseRecord.getText();
-
-                DSASentence sentence = new DSASentence(text);
-                sentence.setSegContent(text);
-                sentence.setId(index);
-
                 this.preProcess(sentence,false);
                 this.findConnWordWithML(sentence);
                 this.markConnAsInterOrCross(sentence,index);
@@ -2303,10 +2313,10 @@ public class DiscourseParser
                     boolean temp = getEDUsFromRoot( curEDU);
 //                    if( temp ) rootEDU.getChildrenEDUS().add(curEDU);
 
-                    InnerNodeClassificationTrain(child,senseRecord,sentence,index,wConnective);
+                    nClass = InnerNodeClassificationTrain(child,senseRecord,sentence,index,wConnective);
                     if(1 == nClass)          sentence.setArg1(curEDU.getContent());
                     else if(2 == nClass)     sentence.setArg2(curEDU.getContent());
-                    else  continue;;
+                    else  continue;
 
                 }
                 index++;
@@ -3080,6 +3090,42 @@ public class DiscourseParser
     }
 
 
+    public void countCorpus()
+    {
+        int nExplicitOne = 0, nExplicitTwo = 0, nExplicitThree = 0, nExplicitFour = 0;
+        int nImplicitOne = 0, nImplicitTwo = 0, nImplicitThree = 0, nImplicitFour = 0;
+
+        for(SenseRecord senseRecord:Resource.Raw_Train_Annotation)
+        {
+            String strTypeArr[] = senseRecord.getRelNO().split("-");
+            String strType = strTypeArr[0];
+
+            if (senseRecord.getType().equalsIgnoreCase(Constants.EXPLICIT))
+            {
+                if (strType.equalsIgnoreCase("1"))       nExplicitOne++;
+                else if(strType.equalsIgnoreCase("2"))  nExplicitTwo++;
+                else if(strType.equalsIgnoreCase("3"))  nExplicitThree++;
+                else  nExplicitFour++;
+            }
+            else
+            {
+                if (strType.equalsIgnoreCase("1"))       nImplicitOne++;
+                else if(strType.equalsIgnoreCase("2"))  nImplicitTwo++;
+                else if(strType.equalsIgnoreCase("3"))  nImplicitThree++;
+                else  nImplicitFour++;
+            }
+
+        }
+
+        System.out.println("The explicit relations:");
+        System.out.println("One: " + nExplicitOne +" Two: " + nExplicitTwo +" Three: " + nExplicitThree + " Four:" + nExplicitFour);
+
+        System.out.println("The implicit relations:");
+        System.out.println("One: " + nImplicitOne +" Two: " + nImplicitTwo +" Three: " + nImplicitThree + " Four:" + nImplicitFour);
+
+    }
+
+
 
     public static void main(String[] args) throws Exception
     {
@@ -3181,6 +3227,7 @@ public class DiscourseParser
         //Count numbers of the connective is at the head of sentence.
 //        dp.countHeadInP2P3();
 
+//        dp.countCorpus();   //count numbers of four classes in Explicit and Implicit.
 //        dp.comuteRelationAccuracy();
 //        DSASentence dsaSentence = new DSASentence(test);
 //        dp.countEDUAccuray();

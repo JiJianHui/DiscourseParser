@@ -144,8 +144,8 @@ public class Constants
     //关系体系的版本号。0：代表旧关系体系 1：代表新关系体系
     public static int OldSenseVersion = 0;
     public static int NewSenseVersion = 1;
-//    public static int SenseVersion = OldSenseVersion;
-    public static int SenseVersion = NewSenseVersion;
+    public static int SenseVersion = OldSenseVersion;
+//    public static int SenseVersion = NewSenseVersion;
 
     //新的关系体系的关系编号
     public static String[] relNo =

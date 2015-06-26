@@ -315,7 +315,7 @@ public class Jacky {
     {
 
         ArrayList<String> stringArrayListRight  = new ArrayList<String>();
-        util.readFileToLines(".\\result2.txt",stringArrayListRight);
+        util.readFileToLines(".\\explicit_result.txt",stringArrayListRight);
 
         ArrayList<String> stringArrayListTest  = new ArrayList<String>();
         util.readFileToLines(".\\result.txt",stringArrayListTest);
@@ -326,7 +326,8 @@ public class Jacky {
         int nRightOfLevelOne = 0,nRightOfLevelTwo = 0;
 
         int nErrorOfLevelOne = 0,nErrorOfLevelTwo = 0;
-        //微平均
+
+        //Accuracy
         for(int i = 0; i < stringArrayListRight.size() ; i++)
         {
             String str1,str2;
@@ -339,14 +340,14 @@ public class Jacky {
             if(arrayOfTest[0].equalsIgnoreCase(arrayOfRight[0]))
             {
                 nRightOfLevelOne++;
-                if(arrayOfTest[1].equalsIgnoreCase(arrayOfRight[1]))
-                {
-                    nRightOfLevelTwo++;
-                }
-                else
-                {
-                    nErrorOfLevelTwo++;
-                }
+//                if(arrayOfTest[1].equalsIgnoreCase(arrayOfRight[1]))
+//                {
+//                    nRightOfLevelTwo++;
+//                }
+//                else
+//                {
+//                    nErrorOfLevelTwo++;
+//                }
             }
             else
             {
@@ -467,6 +468,7 @@ public class Jacky {
         p = (double) a / (a + b);
         r = (double) a / (a + c);
         f = 2 * p * r / (p + r);
+        System.out.println("a: " + a + " b: " + b +" c: " + c);
         System.out.println("The precision of type 4 is " + p);
         System.out.println("The recall of type 4 is " + r);
         System.out.println("The F-score of type 4 is " + f);
@@ -567,10 +569,10 @@ public class Jacky {
 //        jacky.computePostionPRF();;
 
         //句法树内部结点分类
-//        jacky.computeArgExtPRF();
+        jacky.computeArgExtPRF();
 
         //计算关联词识别PRF
-        jacky.computeConnetiveRecognition();
+//        jacky.computeConnetiveRecognition();
 
         //计算显式关系类型识别PRF
 //        jacky.computPRFOfExplicit();
