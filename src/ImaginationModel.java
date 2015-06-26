@@ -14,7 +14,7 @@ import java.util.HashMap;
  */
 public class ImaginationModel {
 
-
+    ArrayList<String> rawCorpusList = new ArrayList<String>();
     public static HashMap<String, WordVector> wordVectors;
 
     public double cosSimi(WordVector wordVectorOne, WordVector wordVectorTwo)
@@ -35,10 +35,10 @@ public class ImaginationModel {
         return dCosSimilarity;
     }
 
-
+// Load Corpus, load tripple vector
     public void loadData() throws IOException
     {
-        ArrayList<String> rawCorpusList = new ArrayList<String>();
+
         util.readFileToLines("ImageModel/corpus",rawCorpusList);
 
         String fPath = "ImageModel/corpus";  //词向量文件地址
