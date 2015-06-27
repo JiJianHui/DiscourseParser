@@ -10,6 +10,7 @@ public class WordVector
 {
     public String wName;
     public Double[] wVector;
+    public double [][] wVectorList;
 
     public WordVector(String line)
     {

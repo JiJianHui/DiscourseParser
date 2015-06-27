@@ -127,8 +127,16 @@ public class DiscourseParser
         return paragraph;
     }
 
+
+
+
+
+
     /**
      * 处理一个封装好的DSASentence，是旧版本run方法的重写。
+     * @param sentence
+     * @param needSegment
+     * @throws IOException
      */
     public void processSentence(DSASentence sentence, boolean needSegment) throws IOException
     {
@@ -225,7 +233,7 @@ public class DiscourseParser
     //-------------------------------0: 对句子进行底层处理--------------------------
 
     /**对输入的句子进行底层的NLP处理，主要是包括了分词、词性标注等。**/
-    private void preProcess(DSASentence sentence, boolean needSegment)
+    public void preProcess(DSASentence sentence, boolean needSegment)
     {
         List<Term> words;
         int beginIndex = 0;
@@ -281,7 +289,7 @@ public class DiscourseParser
      * @param sentence
      * @throws IOException
      */
-    private void findConnWordWithML(DSASentence sentence) throws IOException
+    public void findConnWordWithML(DSASentence sentence) throws IOException
     {
         int beginIndex = 0;
         String segmentResult = "";
