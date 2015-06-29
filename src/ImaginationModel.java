@@ -8,6 +8,8 @@ import org.dom4j.DocumentException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.
@@ -215,17 +217,18 @@ public class ImaginationModel {
         ImageGraph imageGraph = new ImageGraph(imaginationModel.wordVectorHashMap);
 
 
-//        Iterator<String, ArrayList<String>> iterator = imaginationModel.rawWordVectorHashMap.entrySet().iterator();
+        Iterator entryIterator = imaginationModel.wordVectorHashMap.entrySet().iterator();
 
         //计算余弦相似度，给无向图的边赋予权重
-        for(){
-
+        for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.wordVectorHashMap.entrySet()){
+            for (int i = 0; i < entry.getValue().size(); i++){
+                for (int j = 0; j < entry.getValue().size(); j++){
+                    double x = imaginationModel.cosSimi(entry.getValue().get(i),entry.getValue().get(j));
+                    imageGraph.setdWeightMatrix(i,j,x);
+                }
+            }
         }
 
-//        for(Iterator iterator: imaginationModel.rawWordVectorHashMap.entrySet().iterator())
-//        {
-//
-//        }
 
         //计算与背景三元组的余弦相似度
 
