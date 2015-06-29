@@ -1,6 +1,7 @@
 import common.util;
 import entity.recognize.DSAParagraph;
 import entity.recognize.DSASentence;
+import entity.train.ImageGraph;
 import entity.train.WordVector;
 import org.dom4j.DocumentException;
 
@@ -17,8 +18,9 @@ import java.util.HashMap;
 public class ImaginationModel {
 
     public  static ArrayList<String> rawCorpusList = new ArrayList<String>();
+    public HashMap<String,ArrayList<WordVector> > rawWordVectorHashMap;
+    public HashMap<String,ArrayList<WordVector> > backWordVectorHashMap;
     public HashMap<String,ArrayList<WordVector> > wordVectorHashMap;
-
     /**
      * 计算余弦相似度
      * @param wordVectorOne
@@ -56,10 +58,10 @@ public class ImaginationModel {
     }
 
     /**
-     * 加载三元组向量
+     * 加载原文三元组向量
      * @throws IOException
      */
-    public void loadVector() throws IOException
+    public void loadRawVector() throws IOException
     {
         String fVectorPath = "ImageModel/predications_lda.vec";  //Corpus File
         ArrayList<String> lines = new ArrayList<String>();
@@ -78,17 +80,59 @@ public class ImaginationModel {
                 {
                     WordVector wordVector = new WordVector(line);
                     wordVectors.add(wordVector);
-                    line = lines.get(i + 1);
+                    line = lines.get( ++i );
                 }
+                rawWordVectorHashMap.put(strFileName,wordVectors);
                 wordVectorHashMap.put(strFileName,wordVectors);
             }
+            else continue;
         }
-        System.out.println("[--Info--] Loading Word Vector File from [" + fVectorPath + "]" );
+        System.out.println("[--Info--] Loading Raw Corpuse Word Vector File from [" + fVectorPath + "]" );
 //        lines.clear();
 
     }
 
+    /**
+     * 加载背景三元组
+     * @throws IOException
+     */
+    public void loadBackVector() throws IOException
+    {
+        String fVectorPath = "ImageModel/predications_lda.vec";  //Corpus File
+        ArrayList<String> lines = new ArrayList<String>();
+        util.readFileToLinesWithEncoding(fVectorPath, lines,"UTF-8");
 
+        for(int index = 0; index < lines.size(); index++)
+        {
+            String line = lines.get(index);
+            if ( line.contains("file"))
+            {
+                String strFileName = line;
+                ArrayList<WordVector> wordVectors = new ArrayList<WordVector>();
+
+                line = lines.get(index + 1);
+                for(int i = index + 1;!line.contains("file"); )
+                {
+                    WordVector wordVector = new WordVector(line);
+                    wordVectors.add(wordVector);
+                    line = lines.get( ++i );
+                }
+                backWordVectorHashMap.put(strFileName,wordVectors);
+                wordVectorHashMap.put(strFileName,wordVectors);
+            }
+            else continue;
+        }
+        System.out.println("[--Info--] Loading Background Word Vector File from [" + fVectorPath + "]" );
+    }
+
+    /**
+     * 获取句子中的显式句间关系
+     * @param dp    DiscourseParser
+     * @param strSentence 需要处理的句子
+     * @param nIndexOfSentence 句子编号
+     * @return 显式句间关系编号
+     * @throws IOException
+     */
     public String getExplicitRelation(DiscourseParser dp, String strSentence, int nIndexOfSentence) throws IOException
     {
         String strRelation = "";
@@ -135,18 +179,20 @@ public class ImaginationModel {
     }
 
 
-
     public static void main(String args[]) throws IOException, DocumentException
     {
         ImaginationModel imaginationModel = new ImaginationModel();
-        //加载语料、三元组向量
+        //加载语料、原文三元组向量、背景三元组向量
         imaginationModel.loadData();
-        imaginationModel.loadVector();
+        imaginationModel.loadRawVector();
+        imaginationModel.loadBackVector();
 
+        //加载DiscourseParser
         DiscourseParser dp = new DiscourseParser();
 
-        for(String line: rawCorpusList)
-        {
+        //对每条语料进行处理，获取其句间关系
+        for(String line: rawCorpusList){
+
             DSAParagraph paragraph = new DSAParagraph(line);
             ArrayList<String> sentences = util.filtStringToSentence(line);
 
@@ -158,15 +204,38 @@ public class ImaginationModel {
                 nArrayOfRelation[nIndexOfState++] = false;
             }
 
-            for (String strSentence: sentences)
-            {
+            for (String strSentence: sentences){
                 String strRelation = imaginationModel.getExplicitRelation(dp,strSentence,nIndexOfSentence);
                 nArrayOfRelation[nIndexOfSentence] = true;
             }
 
         }
 
+        //建图
+        ImageGraph imageGraph = new ImageGraph(imaginationModel.wordVectorHashMap);
 
-//        System.out.println("Hello world");
+
+//        Iterator<String, ArrayList<String>> iterator = imaginationModel.rawWordVectorHashMap.entrySet().iterator();
+
+        //计算余弦相似度，给无向图的边赋予权重
+        for(){
+
+        }
+
+//        for(Iterator iterator: imaginationModel.rawWordVectorHashMap.entrySet().iterator())
+//        {
+//
+//        }
+
+        //计算与背景三元组的余弦相似度
+
+
+        //排序背景三元组
+
+
+        //根据句间关系，修改边权重
+
+
+
     }
 }
