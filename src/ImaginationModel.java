@@ -128,6 +128,27 @@ public class ImaginationModel {
     }
 
     /**
+     * 加载原文数据；
+     * 句子内容 \t 三元组1内容 \t 三元组1向量 \t 三元组2内容 \t 三元组2向量 ……
+     * @throws IOException
+     */
+    public void LoadRawCorpus() throws IOException
+    {
+        String fVectorPath = "ImageModel/predications_lda.vec";  //Corpus File
+        ArrayList<String> lines = new ArrayList<String>();     //加载原文数据
+        util.readFileToLinesWithEncoding(fVectorPath, lines,"UTF-8");
+
+        for (int i = 0; i < lines.size(); i++){
+            String strArray[] = lines.get(i).split("\t");
+            int nArraySize = strArray.length;      //每一行的大小
+
+            rawCorpusList.add(strArray[0]);
+        }
+
+    }
+
+
+    /**
      * 获取句子中的显式句间关系
      * @param dp    DiscourseParser
      * @param strSentence 需要处理的句子
@@ -189,6 +210,10 @@ public class ImaginationModel {
         imaginationModel.loadRawVector();
         imaginationModel.loadBackVector();
 
+        int nRawCorpusTriple = imaginationModel.rawWordVectorHashMap.size();        //原文三元组的个数
+        int nBachCorpusTriple = imaginationModel.backWordVectorHashMap.size();      //背景三元组的个数
+        int nAllTriple = imaginationModel.wordVectorHashMap.size();                 //全部三元组的个数
+
         //加载DiscourseParser
         DiscourseParser dp = new DiscourseParser();
 
@@ -214,30 +239,31 @@ public class ImaginationModel {
         }
 
         //建图
-        ImageGraph imageGraph = new ImageGraph(imaginationModel.wordVectorHashMap);
+        ImageGraph imageGraph = new ImageGraph(imaginationModel.wordVectorHashMap, imaginationModel.rawWordVectorHashMap.size());
 
 
-        Iterator entryIterator = imaginationModel.wordVectorHashMap.entrySet().iterator();
+//        Iterator entryIterator = imaginationModel.wordVectorHashMap.entrySet().iterator();
 
         //计算余弦相似度，给无向图的边赋予权重
         for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.wordVectorHashMap.entrySet()){
-            for (int i = 0; i < entry.getValue().size(); i++){
-                for (int j = 0; j < entry.getValue().size(); j++){
+            for (int i = 0; i < nAllTriple ; i++){
+                for (int j = 0; j < nAllTriple; j++){
+                    if (i >= imageGraph.getnRawCorpusTriple() && j >= imageGraph.getnRawCorpusTriple() ){
+                        continue;
+                    }
                     double x = imaginationModel.cosSimi(entry.getValue().get(i),entry.getValue().get(j));
                     imageGraph.setdWeightMatrix(i,j,x);
                 }
             }
         }
 
-
-        //计算与背景三元组的余弦相似度
-
-
         //排序背景三元组
 
 
         //根据句间关系，修改边权重
 
+
+        //文本分类验证
 
 
     }
