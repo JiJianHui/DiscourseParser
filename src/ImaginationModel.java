@@ -19,10 +19,22 @@ import java.util.Map;
  */
 public class ImaginationModel {
 
-    public  static ArrayList<String> rawCorpusList = new ArrayList<String>();
+    public ArrayList<String> rawCorpusList;
     public HashMap<String,ArrayList<WordVector> > rawWordVectorHashMap;
-    public HashMap<String,ArrayList<WordVector> > backWordVectorHashMap;
+    public ArrayList<WordVector> backWordVectorHashMap;
     public HashMap<String,ArrayList<WordVector> > wordVectorHashMap;
+
+    /**
+     * 构造函数，完成一些初始化
+     */
+    public ImaginationModel()
+    {
+        rawCorpusList = new ArrayList<String>();
+        rawWordVectorHashMap = new HashMap<String, ArrayList<WordVector>>();
+        backWordVectorHashMap = new ArrayList<WordVector>();
+        wordVectorHashMap = new HashMap<String, ArrayList<WordVector>>();
+    }
+
     /**
      * 计算余弦相似度
      * @param wordVectorOne
@@ -100,29 +112,16 @@ public class ImaginationModel {
      */
     public void loadBackVector() throws IOException
     {
-        String fVectorPath = "ImageModel/predications_lda.vec";  //Corpus File
+        String fVectorPath = "ImageModel/bk_2000.vec";  //Corpus File
         ArrayList<String> lines = new ArrayList<String>();
         util.readFileToLinesWithEncoding(fVectorPath, lines,"UTF-8");
 
-        for(int index = 0; index < lines.size(); index++)
+        int nDimention = Integer.valueOf(lines.get(0) );    //记录维度信息
+        for(int index = 1; index < lines.size(); index++)
         {
             String line = lines.get(index);
-            if ( line.contains("file"))
-            {
-                String strFileName = line;
-                ArrayList<WordVector> wordVectors = new ArrayList<WordVector>();
-
-                line = lines.get(index + 1);
-                for(int i = index + 1;!line.contains("file"); )
-                {
-                    WordVector wordVector = new WordVector(line);
-                    wordVectors.add(wordVector);
-                    line = lines.get( ++i );
-                }
-                backWordVectorHashMap.put(strFileName,wordVectors);
-                wordVectorHashMap.put(strFileName,wordVectors);
-            }
-            else continue;
+            WordVector wordVector = new WordVector(nDimention,line);
+            this.backWordVectorHashMap.add(wordVector);
         }
         System.out.println("[--Info--] Loading Background Word Vector File from [" + fVectorPath + "]" );
     }
@@ -132,17 +131,58 @@ public class ImaginationModel {
      * 句子内容 \t 三元组1内容 \t 三元组1向量 \t 三元组2内容 \t 三元组2向量 ……
      * @throws IOException
      */
-    public void LoadRawCorpus() throws IOException
+    public void loadRawCorpus() throws IOException
     {
-        String fVectorPath = "ImageModel/predications_lda.vec";  //Corpus File
+        String fVectorPath = "ImageModel/discourse_triples.vec";  //Corpus File
         ArrayList<String> lines = new ArrayList<String>();     //加载原文数据
         util.readFileToLinesWithEncoding(fVectorPath, lines,"UTF-8");
 
-        for (int i = 0; i < lines.size(); i++){
-            String strArray[] = lines.get(i).split("\t");
-            int nArraySize = strArray.length;      //每一行的大小
+        int nDimention = Integer.valueOf(lines.get(0) );        //保存维度信息
+        for (int i = 1; i < lines.size(); i++){
 
-            rawCorpusList.add(strArray[0]);
+            String line = lines.get(i);
+            if ( line.contains("file"))
+            {
+                String strFileName = line;
+                ArrayList<WordVector> wordVectors = new ArrayList<WordVector>();
+
+                line = lines.get(i + 1);
+                for(int index = i + 1;!line.contains("file"); )
+                {
+                    String strArray[] = line.split("\t");
+                    String strCorpusSentence = strArray[0];     //语料句子的内容
+                    rawCorpusList.add(strCorpusSentence);
+
+                    String strTriple[], strWordVector="";
+//                    strTriple = strArray[1];        //三元组的内容
+
+                    int nTriple = (strArray.length - 1) / (1 + nDimention);     //获取句中三元组的个数
+                    strTriple = new String[nTriple];
+
+                    for(int j = 1; j <= nTriple; j++){
+
+                        strTriple[j - 1] = strArray [21 * j- 20] ;
+
+                        for(int k = ( 21 * j - 10 ) ; k <= 21 * j ; k++){
+                            if (k == 21 * j){
+                                strWordVector += strArray[i];
+                            }
+                            else{
+                                strWordVector += strArray[i] +" ";
+                            }
+                            WordVector wordVector = new WordVector(nDimention,strWordVector);
+                            wordVectors.add(wordVector);
+                        }
+                    }
+
+                    rawWordVectorHashMap.put(strFileName,wordVectors);
+                    line = lines.get( ++index );
+                }
+
+                wordVectorHashMap.put(strFileName,wordVectors);
+            }
+            else continue;
+
         }
 
     }
@@ -206,8 +246,8 @@ public class ImaginationModel {
     {
         ImaginationModel imaginationModel = new ImaginationModel();
         //加载语料、原文三元组向量、背景三元组向量
-        imaginationModel.loadData();
-        imaginationModel.loadRawVector();
+//        imaginationModel.loadData();
+        imaginationModel.loadRawCorpus();
         imaginationModel.loadBackVector();
 
         int nRawCorpusTriple = imaginationModel.rawWordVectorHashMap.size();        //原文三元组的个数
@@ -218,7 +258,7 @@ public class ImaginationModel {
         DiscourseParser dp = new DiscourseParser();
 
         //对每条语料进行处理，获取其句间关系
-        for(String line: rawCorpusList){
+        for(String line: imaginationModel.rawCorpusList){
 
             DSAParagraph paragraph = new DSAParagraph(line);
             ArrayList<String> sentences = util.filtStringToSentence(line);
@@ -242,8 +282,6 @@ public class ImaginationModel {
         ImageGraph imageGraph = new ImageGraph(imaginationModel.wordVectorHashMap, imaginationModel.rawWordVectorHashMap.size());
 
 
-//        Iterator entryIterator = imaginationModel.wordVectorHashMap.entrySet().iterator();
-
         //计算余弦相似度，给无向图的边赋予权重
         for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.wordVectorHashMap.entrySet()){
             for (int i = 0; i < nAllTriple ; i++){
@@ -261,6 +299,9 @@ public class ImaginationModel {
 
 
         //根据句间关系，修改边权重
+        double dDiscourseWeight = 0;
+
+
 
 
         //文本分类验证

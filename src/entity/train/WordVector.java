@@ -26,6 +26,22 @@ public class WordVector
         }
     }
 
+    public WordVector(int nDimention, String line)
+    {
+        this.wVector = new Double[nDimention];
+
+        String[] lists = line.split(" ");
+        int     length = lists.length;
+
+        wName   = lists[0];
+        wVector = new Double[length - 1];
+
+        for( int i = 1; i < length; i++ )
+        {
+            wVector[i-1] = Double.valueOf( lists[i] );
+        }
+    }
+
     public WordVector()
     {
         this.wName = "";
