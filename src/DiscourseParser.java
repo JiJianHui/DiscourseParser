@@ -2055,6 +2055,77 @@ public class DiscourseParser
     }
 
 
+    public String getCrossExpRel(DSASentence curSentence, DSASentence nextSentence) throws IOException {
+
+
+        String strExplicitRelation = "";
+        //1: 首先判断是否存在connArgArg类型的关系
+        for(DSAConnective conn:curSentence.getConWords())
+        {
+            if( !conn.getInterConnective() && conn.getIsConnective() )
+            {
+                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
+                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
+
+                if( connArgArg > argConnArg )
+                {
+                    DSACrossRelation crossRelation = new DSACrossRelation();
+
+                    crossRelation.arg1SentID  = curSentence.getId();
+                    crossRelation.arg2SentID  = nextSentence.getId();
+                    crossRelation.arg1Content = curSentence.getContent();
+                    crossRelation.arg2Content = nextSentence.getContent();
+
+                    crossRelation.conn        = conn;
+                    crossRelation.relType     = Constants.EXPLICIT;
+
+                    DSAWordDictItem item      = Resource.allWordsDict.get( conn.getContent() );
+                    double     probality      = item.getMostExpProbality();
+                    String       senseNO      = item.getMostExpProbalityRelNO();
+
+                    crossRelation.relNO       = util.convertOldRelIDToNew(senseNO);
+                    crossRelation.probality   = probality;
+                    strExplicitRelation = crossRelation.relNO;
+                }
+            }
+        }
+
+        //2: 判断是否存在conn-Arg-Arg类型的关系
+        for( DSAConnective conn:nextSentence.getConWords() )
+        {
+            if( !conn.getInterConnective() && conn.getIsConnective() )
+            {
+                int argConnArg = Resource.ConnectiveArgNum.get(conn.getContent())[0];
+                int connArgArg = Resource.ConnectiveArgNum.get(conn.getContent())[1];
+
+                if( connArgArg <= argConnArg )
+                {
+                    DSACrossRelation crossRelation = new DSACrossRelation();
+
+                    crossRelation.arg1SentID  = curSentence.getId();
+                    crossRelation.arg2SentID  = nextSentence.getId();
+                    crossRelation.arg1Content = curSentence.getContent();
+                    crossRelation.arg2Content = nextSentence.getContent();
+
+                    crossRelation.conn        = conn;
+                    crossRelation.relType     = Constants.EXPLICIT;
+
+                    DSAWordDictItem item      = Resource.allWordsDict.get( conn.getContent() );
+                    double     probality      = item.getMostExpProbality();
+                    String       senseNO      = item.getMostExpProbalityRelNO();
+
+                    crossRelation.relNO       = util.convertOldRelIDToNew(senseNO);
+                    crossRelation.probality   = probality;
+                    strExplicitRelation = crossRelation.relNO;
+                }
+            }
+        }
+
+        return strExplicitRelation;
+    }
+
+
+
     /**判断一个段落中的两个句子是否存在隐式关系**/
     private int getCrossImpInPara(DSAParagraph para, DSASentence curSentence,
                                   DSASentence nextSentence) throws IOException

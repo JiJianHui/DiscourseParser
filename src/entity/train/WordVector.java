@@ -10,7 +10,16 @@ public class WordVector
 {
     public String wName;
     public Double[] wVector;
-    public double [][] wVectorList;
+
+    public String getwTripleContent() {
+        return wTripleContent;
+    }
+
+    public void setwTripleContent(String wTripleContent) {
+        this.wTripleContent = wTripleContent;
+    }
+
+    public String wTripleContent;
 
     public WordVector(String line)
     {

@@ -23,7 +23,7 @@ public class ImaginationModel {
     public HashMap<String,ArrayList<WordVector> > rawWordVectorHashMap;
     public ArrayList<WordVector> backWordVectorHashMap;
     public HashMap<String,ArrayList<WordVector> > wordVectorHashMap;
-
+    public HashMap<String,ArrayList<String>> rawCorpusHashMap;  //<文件名,该文件中的句子>
     /**
      * 构造函数，完成一些初始化
      */
@@ -33,6 +33,7 @@ public class ImaginationModel {
         rawWordVectorHashMap = new HashMap<String, ArrayList<WordVector>>();
         backWordVectorHashMap = new ArrayList<WordVector>();
         wordVectorHashMap = new HashMap<String, ArrayList<WordVector>>();
+        rawCorpusHashMap = new HashMap<String, ArrayList<String>>();
     }
 
     /**
@@ -57,53 +58,6 @@ public class ImaginationModel {
         dCosSimilarity = dChild / (dSquaresSumOfOne * dSquaresSumOfTwo);
 
         return dCosSimilarity;
-    }
-
-    /**
-     * 加载语料
-     * @throws IOException
-     */
-    public void loadData() throws IOException
-    {
-        String fCorpusPath = "ImageModel/corpus";  //Corpus File
-//        util.readFileToLines(fCorpusPath,rawCorpusList);
-        util.readFileToLinesWithEncoding(fCorpusPath, rawCorpusList,"UTF-8");
-        System.out.println("[--Info--] Loading Word Vector File from [" + fCorpusPath + "]" );
-    }
-
-    /**
-     * 加载原文三元组向量
-     * @throws IOException
-     */
-    public void loadRawVector() throws IOException
-    {
-        String fVectorPath = "ImageModel/predications_lda.vec";  //Corpus File
-        ArrayList<String> lines = new ArrayList<String>();
-        util.readFileToLinesWithEncoding(fVectorPath, lines,"UTF-8");
-
-        for(int index = 0; index < lines.size(); index++)
-        {
-            String line = lines.get(index);
-            if ( line.contains("file"))
-            {
-                String strFileName = line;
-                ArrayList<WordVector> wordVectors = new ArrayList<WordVector>();
-
-                line = lines.get(index + 1);
-                for(int i = index + 1;!line.contains("file"); )
-                {
-                    WordVector wordVector = new WordVector(line);
-                    wordVectors.add(wordVector);
-                    line = lines.get( ++i );
-                }
-                rawWordVectorHashMap.put(strFileName,wordVectors);
-                wordVectorHashMap.put(strFileName,wordVectors);
-            }
-            else continue;
-        }
-        System.out.println("[--Info--] Loading Raw Corpuse Word Vector File from [" + fVectorPath + "]" );
-//        lines.clear();
-
     }
 
     /**
@@ -147,6 +101,7 @@ public class ImaginationModel {
                 ArrayList<WordVector> wordVectors = new ArrayList<WordVector>();
 
                 line = lines.get(i + 1);
+                ArrayList<String> arrayListDiscourse = new ArrayList<String>();
                 for(int index = i + 1;!line.contains("file"); )
                 {
                     String strArray[] = line.split("\t");
@@ -154,14 +109,13 @@ public class ImaginationModel {
                     rawCorpusList.add(strCorpusSentence);
 
                     String strTriple[], strWordVector="";
-//                    strTriple = strArray[1];        //三元组的内容
 
                     int nTriple = (strArray.length - 1) / (1 + nDimention);     //获取句中三元组的个数
                     strTriple = new String[nTriple];
 
                     for(int j = 1; j <= nTriple; j++){
 
-                        strTriple[j - 1] = strArray [21 * j- 20] ;
+                        strTriple[j - 1] = strArray [21 * j- 20] ;      //三元组的内容
 
                         for(int k = ( 21 * j - 10 ) ; k <= 21 * j ; k++){
                             if (k == 21 * j){
@@ -171,20 +125,22 @@ public class ImaginationModel {
                                 strWordVector += strArray[i] +" ";
                             }
                             WordVector wordVector = new WordVector(nDimention,strWordVector);
+                            wordVector.setwTripleContent(strTriple[j - 1]);
                             wordVectors.add(wordVector);
                         }
                     }
 
                     rawWordVectorHashMap.put(strFileName,wordVectors);
-                    line = lines.get( ++index );
+                    index++;
+                    if (index == lines.size())  break;
+                    line = lines.get( index );
                 }
-
+                rawCorpusHashMap.put(strFileName,arrayListDiscourse);
                 wordVectorHashMap.put(strFileName,wordVectors);
             }
             else continue;
 
         }
-
     }
 
 
@@ -205,7 +161,7 @@ public class ImaginationModel {
         sentence.setId(nIndexOfSentence);
 
         //1: 首先进行预处理，进行底层的NLP处理：分词、词性标注
-        dp.preProcess(sentence, false);
+        dp.preProcess(sentence, true);
         //2: 识别单个连词和识别并列连词：不仅...而且
         dp.findConnWordWithML(sentence);
 
@@ -246,7 +202,6 @@ public class ImaginationModel {
     {
         ImaginationModel imaginationModel = new ImaginationModel();
         //加载语料、原文三元组向量、背景三元组向量
-//        imaginationModel.loadData();
         imaginationModel.loadRawCorpus();
         imaginationModel.loadBackVector();
 
@@ -257,23 +212,28 @@ public class ImaginationModel {
         //加载DiscourseParser
         DiscourseParser dp = new DiscourseParser();
 
+        int  EXPLICIT_WEIGHT = 2;
         //对每条语料进行处理，获取其句间关系
-        for(String line: imaginationModel.rawCorpusList){
+        for(Map.Entry<String,ArrayList<String>> entry : imaginationModel.rawCorpusHashMap.entrySet()){
 
-            DSAParagraph paragraph = new DSAParagraph(line);
-            ArrayList<String> sentences = util.filtStringToSentence(line);
+            ArrayList<String> arrayListSentences = entry.getValue();
 
             int nIndexOfSentence = 0;
-            Boolean nArrayOfRelation[] = new Boolean[sentences.size()];
+            int nSentences = arrayListSentences.size();
+            int nArrayOfRelation[] = new int[nSentences];
+
 
             int nIndexOfState = 0;
-            for (Boolean bool: nArrayOfRelation){
-                nArrayOfRelation[nIndexOfState++] = false;
+            for (int i = 0; i < arrayListSentences.size(); i++){
+                nArrayOfRelation[nIndexOfState++] = 0;
             }
 
-            for (String strSentence: sentences){
-                String strRelation = imaginationModel.getExplicitRelation(dp,strSentence,nIndexOfSentence);
-                nArrayOfRelation[nIndexOfSentence] = true;
+            for(int index = 0; index < arrayListSentences.size() - 1; index++){
+                DSASentence curSentence  = new DSASentence(arrayListSentences.get(index));
+                DSASentence nextSentence = new DSASentence(arrayListSentences.get(index + 1));
+
+                String strExplicitRelation = dp.getCrossExpRel(curSentence, nextSentence);
+                if( !strExplicitRelation.isEmpty() ) nArrayOfRelation[nIndexOfSentence] = EXPLICIT_WEIGHT;     //如果
             }
 
         }
@@ -281,15 +241,18 @@ public class ImaginationModel {
         //建图
         ImageGraph imageGraph = new ImageGraph(imaginationModel.wordVectorHashMap, imaginationModel.rawWordVectorHashMap.size());
 
-
         //计算余弦相似度，给无向图的边赋予权重
-        for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.wordVectorHashMap.entrySet()){
+        for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.rawWordVectorHashMap.entrySet()){
+
             for (int i = 0; i < nAllTriple ; i++){
                 for (int j = 0; j < nAllTriple; j++){
+
                     if (i >= imageGraph.getnRawCorpusTriple() && j >= imageGraph.getnRawCorpusTriple() ){
                         continue;
                     }
-                    double x = imaginationModel.cosSimi(entry.getValue().get(i),entry.getValue().get(j));
+                    WordVector wordVectorOne = entry.getValue().get(i);
+                    WordVector wordVectorTwo = entry.getValue().get(j);
+                    double x = imaginationModel.cosSimi(wordVectorOne,wordVectorTwo);
                     imageGraph.setdWeightMatrix(i,j,x);
                 }
             }

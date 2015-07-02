@@ -17,13 +17,7 @@ public class ImageGraph {
 
     private VNode[] mVexs;  // 顶点数组
     private int nVertex;   //顶点数目
-
-
-
     private int nRawCorpusTriple;       //原文三元组数目
-
-
-
     private int nBackTriple;            //背景三元组数目
     private double[][] dWeightMatrix;   //边权重矩阵
 //    private double [][] dRelationMatrix;  //句间关系矩阵
@@ -57,13 +51,14 @@ public class ImageGraph {
         mVexs = new VNode[nVertex];
         dWeightMatrix = new double[nVertex][nVertex];
 
-        Iterator iterator = wordVectorHashMap.entrySet().iterator();
+//        Iterator iterator = wordVectorHashMap.entrySet().iterator();
         int nVertex = this.getnVertex();
 
         //遍历所有节点，给节点权重赋予初始值
         int index = 0;
         for ( Map.Entry<String,ArrayList<WordVector>> entry : wordVectorHashMap.entrySet()){
-           mVexs[index].dWeight =1;         //每个结点的权重初试化为1
+           mVexs[index] = new VNode();
+           mVexs[index].dWeight = 1;         //每个结点的权重初试化为1
            mVexs[index].strName = entry.getKey();
            mVexs[index].wordVectorArrayList = entry.getValue();
         }
@@ -78,8 +73,6 @@ public class ImageGraph {
                 dWeightMatrix[0][0] = 0;
             }
         }
-
-
     }
 
     public int getnVertex() {
@@ -113,7 +106,6 @@ public class ImageGraph {
     public void setnBackTriple(int nBackTriple) {
         this.nBackTriple = nBackTriple;
     }
-
 
     public static void main(String args[]){
 
