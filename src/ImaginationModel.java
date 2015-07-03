@@ -20,20 +20,23 @@ import java.util.Map;
 public class ImaginationModel {
 
     public ArrayList<String> rawCorpusList;
-    public HashMap<String,ArrayList<WordVector> > rawWordVectorHashMap;
+    public HashMap<String,ArrayList<WordVector> > rawWordVectorHashMap[];
     public ArrayList<WordVector> backWordVectorHashMap;
     public HashMap<String,ArrayList<WordVector> > wordVectorHashMap;
     public HashMap<String,ArrayList<String>> rawCorpusHashMap;  //<文件名,该文件中的句子>
+    public ImageGraph imageGraph[];
+
     /**
      * 构造函数，完成一些初始化
      */
-    public ImaginationModel()
+    public ImaginationModel(int nFileNumber)
     {
         rawCorpusList = new ArrayList<String>();
-        rawWordVectorHashMap = new HashMap<String, ArrayList<WordVector>>();
+        rawWordVectorHashMap = new HashMap[nFileNumber];
         backWordVectorHashMap = new ArrayList<WordVector>();
         wordVectorHashMap = new HashMap<String, ArrayList<WordVector>>();
         rawCorpusHashMap = new HashMap<String, ArrayList<String>>();
+        imageGraph = new ImageGraph[nFileNumber];
     }
 
     /**
@@ -42,13 +45,13 @@ public class ImaginationModel {
      * @param wordVectorTwo
      * @return
      */
-    public double cosSimi(WordVector wordVectorOne, WordVector wordVectorTwo)
+    public double cosSimi(WordVector wordVectorOne, WordVector wordVectorTwo,int nDimention)
     {
         double dCosSimilarity = 0;  //Cosine similarity
         double dChild = 0; //
         double dSquaresSumOfOne = 0 ,dSquaresSumOfTwo = 0;
 
-        for(int i = 0; i < 50; i++)
+        for(int i = 0; i < nDimention; i++)
         {
             dChild += wordVectorOne.wVector[i] * wordVectorTwo.wVector[i];
             dSquaresSumOfOne += Math.sqrt(wordVectorOne.wVector[i] * wordVectorOne.wVector[i]) ;
@@ -88,17 +91,22 @@ public class ImaginationModel {
     public void loadRawCorpus() throws IOException
     {
         String fVectorPath = "ImageModel/discourse_triples.vec";  //Corpus File
-        ArrayList<String> lines = new ArrayList<String>();     //加载原文数据
+        ArrayList<String> lines = new ArrayList<String>();     //加载原文数据-
         util.readFileToLinesWithEncoding(fVectorPath, lines,"UTF-8");
 
         int nDimention = Integer.valueOf(lines.get(0) );        //保存维度信息
+
+        int nNumberOfFile = 0;
         for (int i = 1; i < lines.size(); i++){
 
             String line = lines.get(i);
+
             if ( line.contains("file"))
             {
                 String strFileName = line;
-                ArrayList<WordVector> wordVectors = new ArrayList<WordVector>();
+                ArrayList<WordVector> wordVectors = new ArrayList<WordVector>(nDimention);
+
+                rawWordVectorHashMap[nNumberOfFile] = new HashMap<String,ArrayList<WordVector>>();
 
                 line = lines.get(i + 1);
                 ArrayList<String> arrayListDiscourse = new ArrayList<String>();
@@ -110,27 +118,21 @@ public class ImaginationModel {
 
                     String strTriple[], strWordVector="";
 
-                    int nTriple = (strArray.length - 1) / (1 + nDimention);     //获取句中三元组的个数
+                    int nTriple = (strArray.length - 1) / 2;     //获取句中三元组的个数
                     strTriple = new String[nTriple];
 
                     for(int j = 1; j <= nTriple; j++){
 
-                        strTriple[j - 1] = strArray [21 * j- 20] ;      //三元组的内容
+                        strTriple[j - 1] = strArray [2 * j - 1] ;      //三元组的内容
+                        strWordVector = strArray [2 * j];
 
-                        for(int k = ( 21 * j - 10 ) ; k <= 21 * j ; k++){
-                            if (k == 21 * j){
-                                strWordVector += strArray[i];
-                            }
-                            else{
-                                strWordVector += strArray[i] +" ";
-                            }
-                            WordVector wordVector = new WordVector(nDimention,strWordVector);
-                            wordVector.setwTripleContent(strTriple[j - 1]);
-                            wordVectors.add(wordVector);
-                        }
+                        WordVector wordVector = new WordVector(nDimention,strWordVector);
+                        wordVector.setwTripleContent(strTriple[j - 1]);
+                        wordVectors.add(wordVector);
                     }
 
-                    rawWordVectorHashMap.put(strFileName,wordVectors);
+                    rawWordVectorHashMap[nNumberOfFile++].put(strFileName,wordVectors);
+
                     index++;
                     if (index == lines.size())  break;
                     line = lines.get( index );
@@ -200,14 +202,13 @@ public class ImaginationModel {
 
     public static void main(String args[]) throws IOException, DocumentException
     {
-        ImaginationModel imaginationModel = new ImaginationModel();
+        ImaginationModel imaginationModel = new ImaginationModel(900);
         //加载语料、原文三元组向量、背景三元组向量
         imaginationModel.loadRawCorpus();
         imaginationModel.loadBackVector();
 
-        int nRawCorpusTriple = imaginationModel.rawWordVectorHashMap.size();        //原文三元组的个数
+        int nRawCorpusTriple = imaginationModel.rawWordVectorHashMap.length;        //原文三元组的个数
         int nBachCorpusTriple = imaginationModel.backWordVectorHashMap.size();      //背景三元组的个数
-        int nAllTriple = imaginationModel.wordVectorHashMap.size();                 //全部三元组的个数
 
         //加载DiscourseParser
         DiscourseParser dp = new DiscourseParser();
@@ -238,27 +239,44 @@ public class ImaginationModel {
 
         }
 
-        //建图
-        ImageGraph imageGraph = new ImageGraph(imaginationModel.wordVectorHashMap, imaginationModel.rawWordVectorHashMap.size());
+        //建图，每篇文件建一个图
+        ImageGraph imageGraph[] = new ImageGraph[nRawCorpusTriple];
 
-        //计算余弦相似度，给无向图的边赋予权重
-        for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.rawWordVectorHashMap.entrySet()){
-
-            for (int i = 0; i < nAllTriple ; i++){
-                for (int j = 0; j < nAllTriple; j++){
-
-                    if (i >= imageGraph.getnRawCorpusTriple() && j >= imageGraph.getnRawCorpusTriple() ){
-                        continue;
-                    }
-                    WordVector wordVectorOne = entry.getValue().get(i);
-                    WordVector wordVectorTwo = entry.getValue().get(j);
-                    double x = imaginationModel.cosSimi(wordVectorOne,wordVectorTwo);
-                    imageGraph.setdWeightMatrix(i,j,x);
-                }
-            }
+        for (int i = 0; i < imaginationModel.rawWordVectorHashMap.length; i++){
+            HashMap<String,ArrayList<WordVector>> wordVectorGrap = imaginationModel.rawWordVectorHashMap[i];
+            imageGraph[i] = new ImageGraph(wordVectorGrap);
         }
 
-        //排序背景三元组
+        //计算余弦相似度，给原文三元组的无向图的边赋予权重
+        int nIndexOfRawVector = 0;
+//        for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.rawWordVectorHashMap.entrySet()){
+//
+//            imageGraph[nIndexOfRawVector] = new ImageGraph();
+//            for (int i = 0; i < nNumberOfRawCorpusTriple ; i++){
+//                for (int j = 0; j < nNumberOfRawCorpusTriple; j++){
+//
+//                    if (i >= imageGraph.getnRawCorpusTriple() && j >= imageGraph.getnRawCorpusTriple() ){
+//                        continue;
+//                    }
+//                    WordVector wordVectorOne = entry.getValue().get(i);
+//                    WordVector wordVectorTwo = entry.getValue().get(j);
+//                    double x = imaginationModel.cosSimi(wordVectorOne,wordVectorTwo,20);
+//                    imageGraph.setdWeightMatrix(i,j,x);
+//                }
+//            }
+
+
+        }
+
+        //计算与背景三元组的相似度，排序背景三元组
+//        for ( Map.Entry<String,ArrayList<WordVector>> entry : imaginationModel.rawWordVectorHashMap.entrySet()){
+//
+//            for(WordVector backWordVector: imaginationModel.backWordVectorHashMap){
+////                WordVector rawWordVector = entry.getValue();
+//
+//            }
+//
+//        }
 
 
         //根据句间关系，修改边权重
@@ -270,5 +288,5 @@ public class ImaginationModel {
         //文本分类验证
 
 
-    }
+
 }

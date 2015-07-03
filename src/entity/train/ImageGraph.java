@@ -45,7 +45,7 @@ public class ImageGraph {
      * 两个背景三元组之间没有边
      * @param wordVectorHashMap
      */
-    public ImageGraph(HashMap<String,ArrayList<WordVector> > wordVectorHashMap, int nRawCorpusTriple){
+    public ImageGraph(HashMap<String,ArrayList<WordVector> > wordVectorHashMap){
 
         this.setnVertex(wordVectorHashMap.size());
         mVexs = new VNode[nVertex];
@@ -65,7 +65,7 @@ public class ImageGraph {
 
         this.setnRawCorpusTriple(nRawCorpusTriple);
         this.setnVertex(wordVectorHashMap.size());
-        this.setnBackTriple(wordVectorHashMap.size() - nRawCorpusTriple);  //背景三元组的数目 = 全部三元组的数目 - 原文三元组的数目
+//        this.setnBackTriple(wordVectorHashMap.size() - nRawCorpusTriple);  //背景三元组的数目 = 全部三元组的数目 - 原文三元组的数目
 
         //边权重矩阵均赋初值为0
         for(int i = 0; i < nVertex; i++){

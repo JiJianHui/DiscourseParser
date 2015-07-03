@@ -51,6 +51,18 @@ public class WordVector
         }
     }
 
+    public WordVector(int nDimention)
+    {
+        this.wName = "";
+        this.wVector = new Double[nDimention];
+
+        for( int index = 0; index < nDimention; index++ )
+        {
+            this.wVector[index] = 0.0;
+        }
+    }
+
+
     public WordVector()
     {
         this.wName = "";
