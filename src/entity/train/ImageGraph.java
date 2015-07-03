@@ -43,11 +43,12 @@ public class ImageGraph {
      *构造函数，初始化节点权重，初始化部分边权重
      * 任意原文三元组之间都有边，原文三元组与背景三元组之间都有边
      * 两个背景三元组之间没有边
-     * @param wordVectorHashMap
+     * @param strTriple
+     * @param tripleWordVector
      */
-    public ImageGraph(HashMap<String,ArrayList<WordVector> > wordVectorHashMap){
+    public ImageGraph(String[] strTriple,ArrayList<WordVector> tripleWordVector){
 
-        this.setnVertex(wordVectorHashMap.size());
+        this.setnVertex(tripleWordVector.size());
         mVexs = new VNode[nVertex];
         dWeightMatrix = new double[nVertex][nVertex];
 
@@ -55,16 +56,18 @@ public class ImageGraph {
         int nVertex = this.getnVertex();
 
         //遍历所有节点，给节点权重赋予初始值
-        int index = 0;
-        for ( Map.Entry<String,ArrayList<WordVector>> entry : wordVectorHashMap.entrySet()){
-           mVexs[index] = new VNode();
-           mVexs[index].dWeight = 1;         //每个结点的权重初试化为1
-           mVexs[index].strName = entry.getKey();
-           mVexs[index].wordVectorArrayList = entry.getValue();
+//        int index = 0;
+        int nTripleNumber = tripleWordVector.size();
+        for(int index = 0; index < nTripleNumber; index++ ){
+            mVexs[index] = new VNode();
+            mVexs[index].dWeight = 1;         //每个结点的权重初试化为1
+            mVexs[index].strName = strTriple[index];
+            mVexs[index].tripleWordVector = tripleWordVector.get(index);
+//           mVexs[index].wordVectorArrayList = entry.getValue();
         }
 
         this.setnRawCorpusTriple(nRawCorpusTriple);
-        this.setnVertex(wordVectorHashMap.size());
+        this.setnVertex(tripleWordVector.size());
 //        this.setnBackTriple(wordVectorHashMap.size() - nRawCorpusTriple);  //背景三元组的数目 = 全部三元组的数目 - 原文三元组的数目
 
         //边权重矩阵均赋初值为0

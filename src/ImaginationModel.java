@@ -104,21 +104,22 @@ public class ImaginationModel {
             if ( line.contains("file"))
             {
                 String strFileName = line;
-                ArrayList<WordVector> wordVectors = new ArrayList<WordVector>(nDimention);
+                ArrayList<WordVector> tripleWordVectors = new ArrayList<WordVector>(nDimention);
 
                 rawWordVectorHashMap[nNumberOfFile] = new HashMap<String,ArrayList<WordVector>>();
 
                 line = lines.get(i + 1);
                 ArrayList<String> arrayListDiscourse = new ArrayList<String>();
+
+                String strWordVector="";
                 for(int index = i + 1;!line.contains("file"); )
                 {
                     String strArray[] = line.split("\t");
                     String strCorpusSentence = strArray[0];     //语料句子的内容
                     rawCorpusList.add(strCorpusSentence);
 
-                    String strTriple[], strWordVector="";
-
                     int nTriple = (strArray.length - 1) / 2;     //获取句中三元组的个数
+                    String strTriple[];
                     strTriple = new String[nTriple];
 
                     for(int j = 1; j <= nTriple; j++){
@@ -128,17 +129,20 @@ public class ImaginationModel {
 
                         WordVector wordVector = new WordVector(nDimention,strWordVector);
                         wordVector.setwTripleContent(strTriple[j - 1]);
-                        wordVectors.add(wordVector);
+                        tripleWordVectors.add(wordVector);
                     }
+                    imageGraph[index]  = new ImageGraph(strTriple,tripleWordVectors);
 
-                    rawWordVectorHashMap[nNumberOfFile++].put(strFileName,wordVectors);
-
+                    rawWordVectorHashMap[nNumberOfFile++].put(strFileName,tripleWordVectors);
                     index++;
                     if (index == lines.size())  break;
                     line = lines.get( index );
                 }
+
+
+
                 rawCorpusHashMap.put(strFileName,arrayListDiscourse);
-                wordVectorHashMap.put(strFileName,wordVectors);
+                wordVectorHashMap.put(strFileName,tripleWordVectors);
             }
             else continue;
 
@@ -242,10 +246,10 @@ public class ImaginationModel {
         //建图，每篇文件建一个图
         ImageGraph imageGraph[] = new ImageGraph[nRawCorpusTriple];
 
-        for (int i = 0; i < imaginationModel.rawWordVectorHashMap.length; i++){
-            HashMap<String,ArrayList<WordVector>> wordVectorGrap = imaginationModel.rawWordVectorHashMap[i];
-            imageGraph[i] = new ImageGraph(wordVectorGrap);
-        }
+//        for (int i = 0; i < imaginationModel.rawWordVectorHashMap.length; i++){
+//            HashMap<String,ArrayList<WordVector>> wordVectorGrap = imaginationModel.rawWordVectorHashMap[i];
+//            imageGraph[i] = new ImageGraph(wordVectorGrap);
+//        }
 
         //计算余弦相似度，给原文三元组的无向图的边赋予权重
         int nIndexOfRawVector = 0;
